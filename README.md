@@ -1,6 +1,6 @@
 ## ProGen - Jax (wip)
 
-Implementation and replication of ProGen, Language Modeling for Protein Generation, in Jax.
+Implementation and replication of <a href="https://arxiv.org/abs/2004.03497">ProGen</a>, Language Modeling for Protein Generation, in Jax.
 
 ## Citations
 
