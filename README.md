@@ -1,4 +1,4 @@
-## ProGen - Jax
+## ProGen - Jax (wip)
 
 Implementation and replication of ProGen, Language Modeling for Protein Generation, in Jax.
 
