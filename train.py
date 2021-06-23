@@ -70,7 +70,7 @@ val_loader    = cycle(DataLoader(val_dataset, batch_size = BATCH_SIZE))
 # experiment tracker
 
 import wandb
-wandb.init(project = 'uniref50-sample')
+wandb.init(project = 'progen-training')
 
 # setup model and params
 
@@ -121,4 +121,4 @@ for i in tqdm.tqdm(range(NUM_BATCHES), mininterval=10., desc='training'):
         sampled_str = decode_tokens(sampled[PRIME_LENGTH:])
         print(sampled_str)
 
-        wandb.log({'samples': wandb.Table(data = [(prime_str, sampled_str)], columns = ['prime', 'generated'])})
+        wandb.log({'samples': wandb.Html(f'<i>{prime_str}</i><br/><br/><div style="overflow-wrap: break-word;">{sampled_str}</div>')})
