@@ -22,31 +22,69 @@ LayerNorm = partial(hk.LayerNorm, create_scale = True, create_offset = False, ax
 
 # classes
 
-class Attention(hk.Module):
+class LocalAttention(hk.Module):
     def __init__(
         self,
         *,
-        dim_out,
-        dim_head
+        name,
+        dim,
+        window_size,
+        heads = 8,
+        dim_head = 64
     ):
-        super().__init__()
+        super().__init__(name = name)
+        self.heads = heads
         self.scale = dim_head ** -0.5
-        self.to_qkv = hk.Linear(dim_head * 3)
-        self.to_out = hk.Linear(dim_out)
+        self.window_size = window_size
+        inner_dim = dim_head * heads
+
+        self.norm = LayerNorm()
+        self.to_qkv = hk.Linear(inner_dim * 3, with_bias = False)
+        self.to_out = hk.Linear(dim)
 
     def __call__(self, x):
-        n = x.shape[0]
+        x = self.norm(x)
+
+        n, h, wsz = x.shape[0], self.heads, self.window_size
+        assert (n % wsz) == 0, 'sequence length must be divisible by the window size'
+        window = n // wsz
 
         qkv = self.to_qkv(x)
         q, k, v = np.split(qkv, 3, axis = -1)
-        sim = np.einsum('i d, j d -> i j', q, k) * self.scale
+        q, k, v = map(lambda t: rearrange(t, '(w n) (h d) -> h w n d', w = window, h = h), (q, k, v))
 
-        mask = np.triu(np.ones((n, n), dtype = bool), 1)
-        sim = np.where(mask, ATTN_MASK_VALUE, sim)
+        k, v = map(lambda t: np.pad(t, ((0, 0), (1, 0), (0, 0), (0, 0)), constant_values = 0.), (k ,v))
+        k, v = map(lambda t: np.concatenate((t[:, :-1], t[:, 1:]), axis = 2), (k, v))
+
+        sim = np.einsum('h w i d, h w j d -> h w i j', q, k) * self.scale
+
+        mask = np.tril(np.ones((wsz, wsz * 2)), wsz)
+        sim = np.where(mask, sim, ATTN_MASK_VALUE)
 
         attn = nn.softmax(sim, axis = -1)
-        out = np.einsum('i j, j d -> i d', attn, v)
+        out = np.einsum('h w i j, h w j d -> h w i d', attn, v)
+        out = rearrange(out, 'h w n d -> (w n) (h d)')
         return self.to_out(out)
+
+class FeedForward(hk.Module):
+    def __init__(
+        self,
+        *,
+        name,
+        dim,
+        ff_mult = 4
+    ):
+        super().__init__(name = name)
+        self.norm = LayerNorm()
+        self.proj_in = hk.Linear(dim * ff_mult)
+        self.proj_out = hk.Linear(dim)
+
+    def __call__(self, x):
+        x = self.norm(x)
+        x = self.proj_in(x)
+        x = nn.gelu(x)
+        x = self.proj_out(x)
+        return x
 
 class SGU(hk.Module):
     def __init__(
@@ -61,7 +99,7 @@ class SGU(hk.Module):
         self.norm = LayerNorm()
         self.proj_out = hk.Linear(dim_out)
 
-    def __call__(self, x, gate_res = None):
+    def __call__(self, x):
         n = self.seq_len
         x, gate = np.split(x, 2, axis = -1)
 
@@ -78,9 +116,6 @@ class SGU(hk.Module):
 
         gate = np.einsum('n d, m n -> m d', gate, weights)
         gate += biases
-
-        if exists(gate_res):
-            gate += gate_res
 
         x = x * gate
         return self.proj_out(x)
@@ -104,11 +139,9 @@ class gMLP(hk.Module):
 
     def __call__(self, x):
         x = self.norm(x)
-        gate_res = self.attn(x) if exists(self.attn) else None
-
         x = self.proj_in(x)
         x = nn.gelu(x)
-        x = self.sgu(x, gate_res)
+        x = self.sgu(x)
         x = self.proj_out(x)
         return x
 
@@ -120,15 +153,25 @@ class ProGenBase(hk.Module):
         dim,
         seq_len,
         depth,
-        heads = 1,
+        window_size = 512,
+        global_mlp_depth = 2,
+        heads = 8,
+        dim_head = 64,
         ff_mult = 4,
         attn_dim = None,
-        clamp_gate = True,
-        layer_survival_prob = 1.
+        clamp_gate = True
     ):
         super().__init__()
         self.embed = hk.Embed(num_tokens, dim)
-        self.layers = [gMLP(dim = dim, dim_ff = dim * ff_mult, seq_len = seq_len, name = f'gmlp{i}', attn_dim = attn_dim) for i in range(depth)]
+
+        self.layers = []
+        for i in range(depth):
+            self.layers.extend([
+                LocalAttention(name = f'attn{i}', dim = dim, window_size = window_size, heads = heads, dim_head = dim_head),
+                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult)
+            ])
+
+        self.layers.extend([gMLP(dim = dim, dim_ff = dim * ff_mult, seq_len = seq_len, name = f'gmlp{i}', attn_dim = attn_dim) for i in range(global_mlp_depth)])
 
         self.to_logits = hk.Sequential([
             LayerNorm(),

@@ -49,19 +49,31 @@ class TextSamplerDataset(Dataset):
 # main functions
 
 @click.command()
+@click.option('--seed', default = 42)
+@click.option('--num_batches', default = int(1e6))
+@click.option('--batch_size', default = 4)
+@click.option('--grad_accum_every', default = 4)
+@click.option('--learning_rate', default = 2e-4)
+@click.option('--max_grad_norm', default = 0.5)
+@click.option('--validate_every', default = 100)
+@click.option('--sample_every', default = 500)
+@click.option('--prime_length', default = 25)
+@click.option('--seq_len', default = 1024)
+@click.option('--data_path', default = './data/uniref50.sample.gz')
+@click.option('--wandb_project_name', default = 'progen-training')
 def main(
-    seed = 42,
-    num_batches = int(1e6),
-    batch_size = 4,
-    grad_accum_every = 4,
-    learning_rate = 2e-4,
-    max_grad_norm = 0.5,
-    validate_every = 100,
-    sample_every = 500,
-    prime_length = 25,
-    seq_len = 1024,
-    data_path = './data/uniref50.sample.gz',
-    wandb_project_name = 'progen-training'
+    seed,
+    num_batches,
+    batch_size,
+    grad_accum_every,
+    learning_rate,
+    max_grad_norm,
+    validate_every,
+    sample_every,
+    prime_length,
+    seq_len,
+    data_path,
+    wandb_project_name
 ):
     # prepare enwik8 data
 
@@ -82,7 +94,7 @@ def main(
         dim = 512,
         seq_len = seq_len,
         depth = 6,
-        attn_dim = 32
+        global_mlp_depth = 2
     )
 
     model_apply = jit(model.apply)

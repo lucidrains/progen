@@ -19,7 +19,11 @@ model = ProGen(
     num_tokens = 256,
     dim = 512,
     seq_len = 1024,
-    depth = 6
+    window_size = 256,       # local attention window size
+    depth = 12,              # depth
+    heads = 8,               # attention heads
+    dim_head = 64,           # dimension per head
+    global_mlp_depth = 2     # last N global gmlp layers
 )
 
 rng = PRNGSequence(42)
