@@ -1,6 +1,9 @@
+import os
 import gzip
 from itertools import islice
 from Bio import SeqIO
+
+os.makedirs('./data', exist_ok = True)
 
 MAX_SEQ_LEN = 2048
 NUM_SAMPLES = 25000

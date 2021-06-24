@@ -2,6 +2,33 @@
 
 Implementation and replication of <a href="https://arxiv.org/abs/2004.03497">ProGen</a>, Language Modeling for Protein Generation, in Pytorch and Jax (the weights will be made easily transferrable between the two)
 
+## Install
+
+```bash
+$ pip install progen
+```
+
+## Usage
+
+```python
+from jax import random
+from haiku import PRNGSequence
+from progen import ProGen
+
+model = ProGen(
+    num_tokens = 256,
+    dim = 512,
+    seq_len = 1024,
+    depth = 6
+)
+
+rng = PRNGSequence(42)
+seq = random.randint(next(rng), (1024,), 0, 256)
+
+params = model.init(next(rng), seq)
+logits = model.apply(params, next(rng), seq) # (1024, 256)
+```
+
 ## Citations
 
 ```bibtex

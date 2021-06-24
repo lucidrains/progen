@@ -20,6 +20,7 @@ setup(
         "click-option-group",
         "einops>=0.3",
         "dm-haiku",
+        "humanize",
         "jax",
         "jaxlib",
         "optax",

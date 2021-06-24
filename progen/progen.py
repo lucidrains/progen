@@ -18,7 +18,7 @@ ATTN_MASK_VALUE = -1e10
 
 # helpers
 
-LayerNorm = partial(hk.LayerNorm, create_scale = True, create_offset = True, axis = -1)
+LayerNorm = partial(hk.LayerNorm, create_scale = True, create_offset = False, axis = -1)
 
 # classes
 
