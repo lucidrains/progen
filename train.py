@@ -14,7 +14,11 @@ from optax import adam, clip_by_global_norm, chain, apply_updates, apply_every
 from haiku import PRNGSequence
 
 from progen import ProGen
-from progen.utils import sample, get_train_loss_fn
+from progen.utils import sample, get_train_loss_fn, set_hardware_rng_
+
+# speedup rng
+
+set_hardware_rng_(jax)
 
 # helpers
 
