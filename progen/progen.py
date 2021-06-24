@@ -7,7 +7,7 @@ import jax.numpy as np
 
 import haiku as hk
 from haiku import initializers
-from einops import rearrange
+from einops import rearrange, repeat
 
 from progen.utils import exists
 
@@ -19,6 +19,21 @@ ATTN_MASK_VALUE = -1e10
 # helpers
 
 LayerNorm = partial(hk.LayerNorm, create_scale = True, create_offset = False, axis = -1)
+
+def fixed_pos_embedding(seq, dim):
+    inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2) / dim))
+    sinusoid_inp = np.einsum("i , j -> i j", np.arange(seq), inv_freq)
+    return np.sin(sinusoid_inp), np.cos(sinusoid_inp)
+
+def rotate_every_two(x):
+    x1 = x[:, :, ::2]
+    x2 = x[:, :, 1::2]
+    x = np.stack((-x2, x1), axis=-1)
+    return rearrange(x, "... d j -> ... (d j)")
+
+def apply_rotary_pos_emb(x, sincos):
+    sin, cos = map(lambda t: repeat(t, "b n -> b (n j)", j = 2)[None, :, :], sincos)
+    return (x * cos) + (rotate_every_two(x) * sin)
 
 # classes
 
@@ -42,7 +57,7 @@ class LocalAttention(hk.Module):
         self.to_qkv = hk.Linear(inner_dim * 3, with_bias = False)
         self.to_out = hk.Linear(dim)
 
-    def __call__(self, x):
+    def __call__(self, x, *, pos_emb):
         x = self.norm(x)
 
         n, h, wsz = x.shape[0], self.heads, self.window_size
@@ -51,7 +66,10 @@ class LocalAttention(hk.Module):
 
         qkv = self.to_qkv(x)
         q, k, v = np.split(qkv, 3, axis = -1)
-        q, k, v = map(lambda t: rearrange(t, '(w n) (h d) -> h w n d', w = window, h = h), (q, k, v))
+        q, k, v = map(lambda t: rearrange(t, 'n (h d) -> h n d', h = h), (q, k, v))
+
+        q, k, v = map(lambda t: apply_rotary_pos_emb(t, pos_emb), (q, k, v))
+        q, k, v = map(lambda t: rearrange(t, 'h (w n) d -> h w n d', w = window), (q, k, v))
 
         k, v = map(lambda t: np.pad(t, ((0, 0), (1, 0), (0, 0), (0, 0)), constant_values = 0.), (k ,v))
         k, v = map(lambda t: np.concatenate((t[:, :-1], t[:, 1:]), axis = 2), (k, v))
@@ -162,16 +180,17 @@ class ProGenBase(hk.Module):
         clamp_gate = True
     ):
         super().__init__()
+        self.dim_head = dim_head
         self.embed = hk.Embed(num_tokens, dim)
 
         self.layers = []
         for i in range(depth):
-            self.layers.extend([
+            self.layers.append([
                 LocalAttention(name = f'attn{i}', dim = dim, window_size = window_size, heads = heads, dim_head = dim_head),
                 FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult)
             ])
 
-        self.layers.extend([gMLP(dim = dim, dim_ff = dim * ff_mult, seq_len = seq_len, name = f'gmlp{i}', attn_dim = attn_dim) for i in range(global_mlp_depth)])
+        self.global_layers = [gMLP(dim = dim, dim_ff = dim * ff_mult, seq_len = seq_len, name = f'gmlp{i}', attn_dim = attn_dim) for i in range(global_mlp_depth)]
 
         self.to_logits = hk.Sequential([
             LayerNorm(),
@@ -179,9 +198,15 @@ class ProGenBase(hk.Module):
         ])
 
     def __call__(self, x):
+        n = x.shape[0]
         x = self.embed(x)
+        rotary_emb = fixed_pos_embedding(n, self.dim_head)
 
-        for layer in self.layers:
+        for attn, ff in self.layers:
+            x += attn(x, pos_emb = rotary_emb)
+            x += ff(x)
+
+        for layer in self.global_layers:
             x += layer(x)
 
         return self.to_logits(x)
