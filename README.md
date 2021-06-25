@@ -5,7 +5,7 @@ Implementation and replication of <a href="https://arxiv.org/abs/2004.03497">Pro
 ## Install
 
 ```bash
-$ pip install progen
+$ pip install progen-transformer
 ```
 
 ## Usage
