@@ -81,7 +81,7 @@ def hardware_bernoulli(rng_key, p = np.float32(0.5), shape = None):
     del rng_key
     return lax.rng_uniform(0.0, 1.0, shape) < p
 
-def set_hardware_rng(jax):
+def set_hardware_rng_(jax):
     jax.random.bernoulli = hardware_bernoulli
     jax.random.uniform = hardware_uniform
     jax._src.random.uniform = hardware_uniform

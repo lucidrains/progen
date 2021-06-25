@@ -90,17 +90,25 @@ class FeedForward(hk.Module):
         *,
         name,
         dim,
-        ff_mult = 4
+        ff_mult = 4,
+        seq_len = None,
+        spatial_gate = False
     ):
         super().__init__(name = name)
+        hidden_dim = dim * ff_mult
         self.norm = LayerNorm()
-        self.proj_in = hk.Linear(dim * ff_mult)
+        self.proj_in = hk.Linear(hidden_dim)
+        self.sgu = SGU(dim = hidden_dim, dim_out = hidden_dim // 2, seq_len = seq_len) if spatial_gate else None
         self.proj_out = hk.Linear(dim)
 
     def __call__(self, x):
         x = self.norm(x)
         x = self.proj_in(x)
         x = nn.gelu(x)
+
+        if exists(self.sgu):
+            x = self.sgu(x)
+
         x = self.proj_out(x)
         return x
 
@@ -138,31 +146,6 @@ class SGU(hk.Module):
         x = x * gate
         return self.proj_out(x)
 
-class gMLP(hk.Module):
-    def __init__(
-        self,
-        *,
-        dim,
-        dim_ff,
-        seq_len,
-        name,
-        attn_dim = None
-    ):
-        super().__init__(name = name)
-        self.attn = Attention(dim_head = attn_dim, dim_out = dim_ff // 2) if exists(attn_dim) else None
-        self.norm = LayerNorm()
-        self.proj_in = hk.Linear(dim_ff)
-        self.sgu = SGU(dim = dim_ff, dim_out = dim_ff // 2, seq_len = seq_len)
-        self.proj_out = hk.Linear(dim)
-
-    def __call__(self, x):
-        x = self.norm(x)
-        x = self.proj_in(x)
-        x = nn.gelu(x)
-        x = self.sgu(x)
-        x = self.proj_out(x)
-        return x
-
 class ProGenBase(hk.Module):
     def __init__(
         self,
@@ -171,7 +154,7 @@ class ProGenBase(hk.Module):
         dim,
         seq_len,
         depth,
-        window_size = 512,
+        window_size = 256,
         global_mlp_depth = 2,
         heads = 8,
         dim_head = 64,
@@ -185,12 +168,11 @@ class ProGenBase(hk.Module):
 
         self.layers = []
         for i in range(depth):
+            use_gmlp = (depth - i) <= global_mlp_depth
             self.layers.append([
                 LocalAttention(name = f'attn{i}', dim = dim, window_size = window_size, heads = heads, dim_head = dim_head),
-                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult)
+                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult, seq_len = seq_len, spatial_gate = use_gmlp)
             ])
-
-        self.global_layers = [gMLP(dim = dim, dim_ff = dim * ff_mult, seq_len = seq_len, name = f'gmlp{i}', attn_dim = attn_dim) for i in range(global_mlp_depth)]
 
         self.to_logits = hk.Sequential([
             LayerNorm(),
@@ -205,9 +187,6 @@ class ProGenBase(hk.Module):
         for attn, ff in self.layers:
             x += attn(x, pos_emb = rotary_emb)
             x += ff(x)
-
-        for layer in self.global_layers:
-            x += layer(x)
 
         return self.to_logits(x)
 
