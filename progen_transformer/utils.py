@@ -1,4 +1,4 @@
-from jax import random, nn, value_and_grad, vmap, jit, lax
+from jax import random, nn, value_and_grad, vmap, pmap, jit, lax
 from jax.lax import top_k
 import jax.numpy as np
 
@@ -18,8 +18,9 @@ def cross_entropy(logits, targets, axis = -1):
     ce = -np.mean(nll)
     return ce
 
-def get_train_loss_fn(model):
-    batch_model_apply = jit(vmap(model.apply, in_axes = (None, None, 0), out_axes = 0))
+def get_train_loss_fn(model, data_parallel = False):
+    map_fn = pmap if data_parallel else vmap
+    batch_model_apply = jit(map_fn(model.apply, in_axes = (None, None, 0), out_axes = 0))
 
     @value_and_grad
     def loss_fn(params, key, data):
