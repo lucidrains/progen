@@ -13,7 +13,7 @@ $ pip install progen
 ```python
 from jax import random
 from haiku import PRNGSequence
-from progen import ProGen
+from progen_transformer import ProGen
 
 model = ProGen(
     num_tokens = 256,

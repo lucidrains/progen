@@ -1,11 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="progen",
+    name="progen-transformer",
     packages=find_packages(),
-    version="0.0.5",
+    version="0.0.2",
     license="MIT",
-    description="ProGen",
+    description="Protein Generation (ProGen)",
     author="Phil Wang",
     author_email="",
     url="https://github.com/lucidrains/progen",
