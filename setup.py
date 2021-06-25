@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="progen-transformer",
     packages=find_packages(),
-    version="0.0.3",
+    version="0.0.4",
     license="MIT",
     description="Protein Generation (ProGen)",
     author="Phil Wang",
@@ -18,6 +18,7 @@ setup(
         "biopython",
         "click",
         "click-option-group",
+        "cloudpickle",
         "einops>=0.3",
         "dm-haiku",
         "humanize",
