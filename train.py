@@ -133,12 +133,12 @@ def main(
 
     # initialize all states, or load from checkpoint
 
-    checkpoints = [c for c in checkpoint_path.glob('**/*')]
+    checkpoints = [c for c in checkpoint_path.glob('**/ckpt_*')]
     has_checkpoints = len(checkpoints) > 0
 
     if has_checkpoints:
         last_checkpoint_timestamp = sorted(list(map(lambda t: int(t.stem.split('_')[-1]), checkpoints)))
-        last_checkpoint_path = checkpoint_path / f'model_{last_checkpoint_timestamp}'
+        last_checkpoint_path = checkpoint_path / f'ckpt_{last_checkpoint_timestamp}'
         with open(str(last_checkpoint_path), 'rb') as f:
             package = pickle.load(f)
             params = package['params']
