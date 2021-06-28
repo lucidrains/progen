@@ -20,6 +20,8 @@ setup(
         "click-option-group",
         "cloudpickle",
         "einops>=0.3",
+        "dagster",
+        "dagit",
         "dm-haiku",
         "humanize",
         "jax",
