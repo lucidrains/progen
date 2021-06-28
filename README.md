@@ -23,6 +23,7 @@ model = ProGen(
     depth = 12,              # depth
     heads = 8,               # attention heads
     dim_head = 64,           # dimension per head
+    ff_glu = True,           # use GLU in feedforward, from Noam's paper
     global_mlp_depth = 2     # last N global gmlp layers
 )
 
