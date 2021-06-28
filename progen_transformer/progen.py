@@ -94,20 +94,31 @@ class FeedForward(hk.Module):
         name,
         dim,
         ff_mult = 4,
+        glu = False,
         seq_len = None,
         spatial_gate = False
     ):
         super().__init__(name = name)
+        assert not (glu and spatial_gate), 'glu and sgu cannot be turned on at the same time'
         hidden_dim = dim * ff_mult
+        hidden_dim *= (1 if not glu else 2)
+
         self.norm = LayerNorm()
         self.proj_in = hk.Linear(hidden_dim)
-        self.sgu = SGU(dim = hidden_dim, dim_out = hidden_dim // 2, seq_len = seq_len) if spatial_gate else None
         self.proj_out = hk.Linear(dim)
+
+        self.glu = glu
+        self.sgu = SGU(dim = hidden_dim, dim_out = hidden_dim // 2, seq_len = seq_len) if spatial_gate else None
 
     def __call__(self, x):
         x = self.norm(x)
         x = self.proj_in(x)
-        x = nn.gelu(x)
+
+        if self.glu:
+            x, gate = np.split(x, 2, axis = -1)
+            x *= nn.gelu(gate)
+        else:
+            x = nn.gelu(x)
 
         if exists(self.sgu):
             x = self.sgu(x)
@@ -162,6 +173,7 @@ class ProGenBase(hk.Module):
         heads = 8,
         dim_head = 64,
         ff_mult = 4,
+        ff_glu = True,
         attn_dim = None,
         clamp_gate = True
     ):
@@ -172,9 +184,11 @@ class ProGenBase(hk.Module):
         self.layers = []
         for i in range(depth):
             use_gmlp = (depth - i) <= global_mlp_depth
+            use_ff_glu = not use_gmlp and ff_glu
+
             self.layers.append([
                 LocalAttention(name = f'attn{i}', dim = dim, window_size = window_size, heads = heads, dim_head = dim_head),
-                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult, seq_len = seq_len, spatial_gate = use_gmlp)
+                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult, seq_len = seq_len, spatial_gate = use_gmlp, glu = use_ff_glu)
             ])
 
         self.to_logits = hk.Sequential([

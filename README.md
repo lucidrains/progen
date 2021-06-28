@@ -45,3 +45,23 @@ logits = model.apply(params, next(rng), seq) # (1024, 256)
     primaryClass = {q-bio.BM}
 }
 ```
+
+```bibtex
+@misc{su2021roformer,
+    title   = {RoFormer: Enhanced Transformer with Rotary Position Embedding},
+    author  = {Jianlin Su and Yu Lu and Shengfeng Pan and Bo Wen and Yunfeng Liu},
+    year    = {2021},
+    eprint  = {2104.09864},
+    archivePrefix = {arXiv},
+    primaryClass = {cs.CL}
+}
+```
+
+```bibtex
+@misc{shazeer2020glu,
+    title   = {GLU Variants Improve Transformer},
+    author  = {Noam Shazeer},
+    year    = {2020},
+    url     = {https://arxiv.org/abs/2002.05202}
+}
+```
