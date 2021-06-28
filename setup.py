@@ -24,6 +24,7 @@ setup(
         "humanize",
         "jax",
         "jaxlib",
+        "omegaconf",
         "optax",
         "torch",
         "tqdm"

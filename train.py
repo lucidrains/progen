@@ -7,6 +7,8 @@ from pathlib import Path
 import tqdm
 import gzip
 import numpy as np
+
+import omegaconf
 from cloudpickle import pickle
 
 from torch.utils.data import DataLoader, Dataset
@@ -67,6 +69,8 @@ class TextSamplerDataset(Dataset):
 @click.option('--sample_every', default = 500)
 @click.option('--checkpoint_every', default = 1000)
 @click.option('--checkpoint_path', default = './ckpts')
+@click.option('--config_path', default = './configs')
+@click.option('--model_name', default = 'default')
 @click.option('--prime_length', default = 25)
 @click.option('--seq_len', default = 1024)
 @click.option('--data_path', default = './data/uniref50.sample.gz')
@@ -83,6 +87,8 @@ def main(
     sample_every,
     checkpoint_every,
     checkpoint_path,
+    config_path,
+    model_name,
     prime_length,
     seq_len,
     data_path,
@@ -111,13 +117,12 @@ def main(
 
     # setup model and params
 
-    model = ProGen(
-        num_tokens = 256,
-        dim = 512,
-        seq_len = seq_len,
-        depth = 6,
-        global_mlp_depth = 2
-    )
+    config_folder_path = Path(config_path)
+    config_path = config_folder_path / f'{model_name}.yml'
+    assert config_path.exists(), f'path to your model config {str(config_path)} does not exist'
+
+    model_kwargs = OmegaConf.load(str(config_path))
+    model = ProGen(**model_kwargs)
 
     model_apply = jit(model.apply)
     rng = PRNGSequence(seed)
