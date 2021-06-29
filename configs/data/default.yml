@@ -1,4 +1,4 @@
 read_from: './uniref50.fasta'
-write_to: './data/uniref50.sample.gz'
+write_to: './train_data'
 num_samples: 25000
 max_seq_len: 1024

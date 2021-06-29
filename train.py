@@ -20,7 +20,10 @@ from optax import adam, clip_by_global_norm, chain, apply_updates, apply_every
 from haiku import PRNGSequence
 
 from progen_transformer import ProGen
+from progen_transformer.data import decode_tokens, iterator_from_tfrecords_folder
 from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_
+
+import wandb
 
 # speedup rng
 
@@ -32,14 +35,6 @@ def cycle(loader):
     while True:
         for data in loader:
             yield data
-
-def decode_token(token):
-    if token == 0:
-        return ''
-    return str(chr(max(32, token)))
-
-def decode_tokens(tokens):
-    return ''.join(list(map(decode_token, tokens)))
 
 # dataset
 
@@ -73,7 +68,7 @@ class TextSamplerDataset(Dataset):
 @click.option('--model_name', default = 'default')
 @click.option('--prime_length', default = 25)
 @click.option('--seq_len', default = 1024)
-@click.option('--data_path', default = './data/uniref50.sample.gz')
+@click.option('--data_path', default = './train_data')
 @click.option('--wandb_project_name', default = 'progen-training')
 @click.option('--new', default = False, is_flag = True)
 def main(
@@ -102,18 +97,6 @@ def main(
 
     checkpoint_path = Path(checkpoint_path)
     checkpoint_path.mkdir(parents = True, exist_ok = True)
-
-    # prepare enwik8 data
-
-    with gzip.open(data_path) as file:
-        all_data = np.fromstring(file.read(), dtype = np.uint8)
-        data_len = all_data.shape[0]
-        data_train, data_val = np.split(all_data, [int(data_len * 0.95)])
-
-    train_dataset = TextSamplerDataset(data_train, seq_len)
-    val_dataset   = TextSamplerDataset(data_val, seq_len)
-    train_loader  = cycle(DataLoader(train_dataset, batch_size = batch_size))
-    val_loader    = cycle(DataLoader(val_dataset, batch_size = batch_size))
 
     # setup model and params
 
@@ -149,14 +132,14 @@ def main(
             params = package['params']
             optim_state = package['optim_state']
             start_step = package['next_step']
+            print(f'restoring from step {start_step}')
     else:
-        params = model.init(next(rng), train_dataset[0][:-1])
+        mock_data = np.zeros((model_kwargs['seq_len'],), dtype = np.uint8)
+        params = model.init(next(rng), mock_data)
         optim_state = optim.init(params)
         start_step = 0
 
     # experiment tracker
-
-    import wandb
 
     num_params = tree_util.tree_reduce(lambda acc, el: acc + el.size, params, 0)
     num_params_readable = humanize.naturalsize(num_params)
@@ -165,10 +148,19 @@ def main(
     wandb.config.num_params = num_params
     wandb.init(project = wandb_project_name)
 
+    # get tf dataset
+
+    train_loader = iterator_from_tfrecords_folder(
+        data_path,
+        seq_len = model_kwargs['seq_len'],
+        batch_size = batch_size,
+        skip = start_step
+    )
+
     # training
 
     for i in tqdm.tqdm(range(start_step, num_batches), mininterval = 10., desc = 'training'):
-        data = next(train_loader).numpy()
+        data = next(train_loader)
 
         loss, grads = loss_fn(params, next(rng), data)
         updates, optim_state = optim.update(grads, optim_state, params)
@@ -189,8 +181,7 @@ def main(
                 pickle.dump(package, f)
 
         if i % sample_every == 0:
-            valid_data = next(val_loader).numpy()
-            prime = valid_data[0][:prime_length]
+            prime = data[0][:prime_length]
             prime_str = decode_tokens(prime)
             print(prime_str, "\n", "*" * 40)
 

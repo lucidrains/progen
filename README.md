@@ -34,6 +34,34 @@ params = model.init(next(rng), seq)
 logits = model.apply(params, next(rng), seq) # (1024, 256)
 ```
 
+## Training from Uniref
+
+Download Uniref50 from <a href="https://www.uniprot.org/downloads">UniProt</a> and place `uniref50.fasta` in the root directory
+
+```bash
+$ python gen_train_data.py
+```
+
+You should see a lot of green if everything succeeds. Then
+
+
+```bash
+$ python train.py
+```
+
+By default, the script will checkpoint and resume automatically, but if you wish to clear your progress and restart, just add a `--new` flag
+
+```bash
+$ python train.py --new
+```
+
+## Todo
+
+- [ ] checkpoint and resume from a google cloud storage path
+- [ ] train tfrecords from google cloud storage path
+- [ ] generate validation tfrecords
+- [ ] add more todos - use github issues
+
 ## Citations
 
 ```bibtex
