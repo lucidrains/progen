@@ -8,7 +8,7 @@ import tqdm
 import gzip
 import numpy as np
 
-import omegaconf
+from omegaconf import OmegaConf
 from cloudpickle import pickle
 
 from torch.utils.data import DataLoader, Dataset
@@ -69,7 +69,7 @@ class TextSamplerDataset(Dataset):
 @click.option('--sample_every', default = 500)
 @click.option('--checkpoint_every', default = 1000)
 @click.option('--checkpoint_path', default = './ckpts')
-@click.option('--config_path', default = './configs')
+@click.option('--config_path', default = './configs/model')
 @click.option('--model_name', default = 'default')
 @click.option('--prime_length', default = 25)
 @click.option('--seq_len', default = 1024)
@@ -101,7 +101,7 @@ def main(
         rmtree(str(checkpoint_path), ignore_errors = True)
 
     checkpoint_path = Path(checkpoint_path)
-    checkpoint_path.mkdir(exist_ok = True)
+    checkpoint_path.mkdir(parents = True, exist_ok = True)
 
     # prepare enwik8 data
 
@@ -142,8 +142,8 @@ def main(
     has_checkpoints = len(checkpoints) > 0
 
     if has_checkpoints:
-        last_checkpoint_timestamp = sorted(list(map(lambda t: int(t.stem.split('_')[-1]), checkpoints)))
-        last_checkpoint_path = checkpoint_path / f'ckpt_{last_checkpoint_timestamp}'
+        last_checkpoint_timestamp = max(list(map(lambda t: int(t.stem.split('_')[-1]), checkpoints)))
+        last_checkpoint_path = checkpoint_path / f'ckpt_{last_checkpoint_timestamp}.pkl'
         with open(str(last_checkpoint_path), 'rb') as f:
             package = pickle.load(f)
             params = package['params']
@@ -186,7 +186,7 @@ def main(
                 'optim_state': optim_state
             }
             with open(str(checkpoint_path / f'ckpt_{unix_time}.pkl'), 'wb') as f:
-                pickle.dumps(package, f)
+                pickle.dump(package, f)
 
         if i % sample_every == 0:
             valid_data = next(val_loader).numpy()

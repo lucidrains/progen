@@ -4,6 +4,9 @@ import click
 from itertools import islice
 from Bio import SeqIO
 
+from pathlib import Path
+
+from omegaconf import OmegaConf
 from dagster import execute_pipeline, pipeline, solid
 
 @solid
@@ -20,17 +23,23 @@ def fasta_to_bytes(context):
             data = data.encode('utf-8')
             f.write(data)
 
-
 @pipeline
 def main_pipeline():
     fasta_to_bytes()
 
 @click.command()
-@click.option('--read_from', default = './uniref50.fasta')
-@click.option('--write_to', default = './data/uniref50.sample.gz')
-@click.option('--num_samples', default = 25000)
-@click.option('--max_seq_len', default = 2048)
-def main(**config):
+@click.option('--data_dir', default = './configs/data')
+@click.option('--name', default = 'default')
+def main(
+    data_dir,
+    name
+):
+    data_dir = Path(data_dir)
+    config_path = data_dir / f'{name}.yml'
+    assert config_path.exists(), f'config does not exist at {str(config_path)}'
+
+    config = OmegaConf.load(str(config_path))
+
     execute_pipeline(
         main_pipeline,
         run_config = dict(
