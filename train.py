@@ -29,28 +29,6 @@ import wandb
 
 set_hardware_rng_(jax)
 
-# helpers
-
-def cycle(loader):
-    while True:
-        for data in loader:
-            yield data
-
-# dataset
-
-class TextSamplerDataset(Dataset):
-    def __init__(self, data, seq_len):
-        super().__init__()
-        self.data = data
-        self.seq_len = seq_len
-
-    def __getitem__(self, index):
-        rand_start = randrange(0, self.data.shape[0] - self.seq_len - 1)
-        return self.data[rand_start: rand_start + self.seq_len + 1]
-
-    def __len__(self):
-        return self.data.shape[0] // self.seq_len
-
 # main functions
 
 @click.command()
