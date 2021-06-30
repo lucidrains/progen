@@ -11,8 +11,6 @@ import numpy as np
 from omegaconf import OmegaConf
 from cloudpickle import pickle
 
-from torch.utils.data import DataLoader, Dataset
-
 import jax
 from jax import nn, random, jit, tree_util
 from optax import adam, clip_by_global_norm, chain, apply_updates, apply_every
