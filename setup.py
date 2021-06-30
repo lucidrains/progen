@@ -28,6 +28,7 @@ setup(
         "jaxlib",
         "omegaconf",
         "optax",
+        "python-dotenv",
         "tensorflow",
         "tfrecord",
         "tqdm"

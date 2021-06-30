@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 import click
 import humanize
 import time
