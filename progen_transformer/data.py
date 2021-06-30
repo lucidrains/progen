@@ -29,8 +29,10 @@ def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, skip = 0):
 
     dataset = dataset.skip(skip)
     dataset = dataset.map(parse_fn)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
-    for batch in dataset.batch(batch_size):
+    for batch in dataset:
         seq = batch['seq']
         batch_size = seq.shape[0]
         seq = collate_fn(seq, pad_length = seq_len, offset = 1)
