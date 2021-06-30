@@ -55,6 +55,8 @@ By default, the script will checkpoint and resume automatically, but if you wish
 $ python train.py --new
 ```
 
+Model checkpoints will be saved periodically to `./ckpts`
+
 ## Todo
 
 - [ ] checkpoint and resume from a google cloud storage path
