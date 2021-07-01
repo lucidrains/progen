@@ -7,6 +7,7 @@ from Bio import SeqIO
 
 from tfrecord import TFRecordWriter
 import numpy as np
+from random import random
 from shutil import rmtree
 from pathlib import Path
 
@@ -37,9 +38,14 @@ def fasta_to_tmp_files(context):
     it = islice(it, 0, config['num_samples'])
 
     for index, sample in enumerate(it):
-        seq = sample.seq
+        seq = str(sample.seq)
         annotation = f'[{sample.description}]'
-        data = f'{annotation} # {seq}'
+        data = (annotation, seq)
+
+        if random() <= config['prob_invert_seq_annotation']:
+            data = tuple(reversed(data))
+
+        data = ' # '.join(data)
         data = data.encode('utf-8')
 
         filename = str(TMP_DIR / str(index))
@@ -57,7 +63,9 @@ def files_to_tfrecords(context):
 
     num_split = ceil(config['num_samples'] / NUM_SEQUENCES_PER_FILE)
     for file_index, indices in enumerate(np.array_split(permuted_sequences, num_split)):
-        writer = TFRecordWriter(str(write_to_path / f'./{file_index}.tfrecord'))
+        num_sequences = len(indices)
+
+        writer = TFRecordWriter(str(write_to_path / f'./{file_index}.{num_sequences}.tfrecord'))
 
         for index in indices:
             filename = str(TMP_DIR / str(index))

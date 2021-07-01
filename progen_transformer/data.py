@@ -55,6 +55,3 @@ def encode_tokens(tokens):
 
 def decode_tokens(tokens, offset = 1):
     return ''.join(list(map(decode_token, tokens.astype(np.int16) - offset)))
-
-# saving and loading checkpoints
-

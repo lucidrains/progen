@@ -64,8 +64,8 @@ Model checkpoints will be saved periodically to `./ckpts`
 - [ ] generate validation tfrecords
 - [ ] add panda integration with GO annotations
 - [ ] config to annotation to template string with jinja2
-- [ ] flip seq # annotation order with prob set in config
 - [ ] model parallelism with pjit
+- [x] flip seq # annotation order with prob set in config
 - [x] keep N last checkpoints
 
 ## Citations
