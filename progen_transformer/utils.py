@@ -14,8 +14,8 @@ def log(t, eps = 1e-20):
 
 def cross_entropy(logits, targets, axis = -1, ignore_index = 0):
     logprobs = nn.log_softmax(logits, axis = axis)
-    mask = (targets != ignore_index)
     nll = np.take_along_axis(logprobs, np.expand_dims(targets, axis = axis), axis = axis)
+    mask = (targets != ignore_index)
     ce = -np.mean(nll[mask])
     return ce
 
