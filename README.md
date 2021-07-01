@@ -66,6 +66,7 @@ Model checkpoints will be saved periodically to `./ckpts`
 - [ ] config to annotation to template string with jinja2
 - [ ] model parallelism with pjit
 - [ ] manage experimental tracker state, and also allow ability to turn it off by piping to noop
+- [ ] resume from correct place in tfrecord even if batch size is changed inbetween runs, display number of sequences processed (aiming for 1 billion)
 - [x] flip seq # annotation order with prob set in config
 - [x] keep N last checkpoints
 
