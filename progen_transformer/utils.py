@@ -15,7 +15,14 @@ def log(t, eps = 1e-20):
 def cross_entropy(logits, targets, axis = -1, ignore_index = 0):
     logprobs = nn.log_softmax(logits, axis = axis)
     nll = np.take_along_axis(logprobs, np.expand_dims(targets, axis = axis), axis = axis)
+
+    # mask for loss is engineered so that it learns from the first padding token
+    # the padding token is reused as end-of-string for simplicity
+
     mask = (targets != ignore_index)
+    eos_mask = (~mask).cumsum(axis = -1) == 1
+    mask = mask | eos_mask
+
     ce = -np.mean(nll[mask])
     return ce
 
@@ -62,6 +69,10 @@ def sample(rng, fn, params, prime, length, top_k = None):
 
         one_hot = one_hots[curr_pos]
         seq += one_hot * sampled_ind
+
+    # for now, just set everything after second padding token (eos) to padding
+    remove_after_eos_mask = (seq == 0).cumsum(axis = -1) > 1
+    seq *= ~remove_after_eos_mask
 
     return seq
 

@@ -1,3 +1,8 @@
+# dl related folders
+
+ckpts/
+train_data/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
