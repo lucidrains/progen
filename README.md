@@ -62,12 +62,11 @@ Model checkpoints will be saved periodically to `./ckpts`
 - [ ] checkpoint and resume from a google cloud storage path
 - [ ] train tfrecords from google cloud storage path
 - [ ] generate validation tfrecords
-- [ ] add more todos - use github issues
-- [ ] keep N last checkpoints
 - [ ] add panda integration with GO annotations
 - [ ] config to annotation to template string with jinja2
 - [ ] flip seq # annotation order with prob set in config
 - [ ] model parallelism with pjit
+- [x] keep N last checkpoints
 
 ## Citations
 

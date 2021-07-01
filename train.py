@@ -23,6 +23,7 @@ from haiku import PRNGSequence
 from progen_transformer import ProGen
 from progen_transformer.data import decode_tokens, iterator_from_tfrecords_folder
 from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_
+from progen_transformer.checkpoint import silentremove
 
 import wandb
 
@@ -43,6 +44,7 @@ set_hardware_rng_(jax)
 @click.option('--sample_every', default = 500)
 @click.option('--checkpoint_every', default = 1000)
 @click.option('--checkpoint_path', default = './ckpts')
+@click.option('--checkpoint_keep_n', default = 500)
 @click.option('--config_path', default = './configs/model')
 @click.option('--model_name', default = 'default')
 @click.option('--prime_length', default = 25)
@@ -61,6 +63,7 @@ def main(
     sample_every,
     checkpoint_every,
     checkpoint_path,
+    checkpoint_keep_n,
     config_path,
     model_name,
     prime_length,
@@ -100,18 +103,15 @@ def main(
 
     # initialize all states, or load from checkpoint
 
-    checkpoints = [c for c in checkpoint_path.glob('**/ckpt_*')]
+    checkpoints = sorted(checkpoint_path.glob('**/ckpt_*'))
     has_checkpoints = len(checkpoints) > 0
 
     if has_checkpoints:
-        last_checkpoint_timestamp = max(list(map(lambda t: int(t.stem.split('_')[-1]), checkpoints)))
-        last_checkpoint_path = checkpoint_path / f'ckpt_{last_checkpoint_timestamp}.pkl'
-        with open(str(last_checkpoint_path), 'rb') as f:
+        with open(str(checkpoints[-1]), 'rb') as f:
             package = pickle.load(f)
             params = package['params']
             optim_state = package['optim_state']
             start_step = package['next_step']
-            print(f'restoring from step {start_step}')
     else:
         mock_data = np.zeros((model_kwargs['seq_len'],), dtype = np.uint8)
         params = model.init(next(rng), mock_data)
@@ -122,7 +122,6 @@ def main(
 
     num_params = tree_util.tree_reduce(lambda acc, el: acc + el.size, params, 0)
     num_params_readable = humanize.naturalsize(num_params)
-    print(f'params: {num_params_readable}')
 
     wandb.config.num_params = num_params
     wandb.init(project = wandb_project_name)
@@ -135,6 +134,11 @@ def main(
         batch_size = batch_size,
         skip = start_step
     )
+
+    # print
+
+    print(f'params: {num_params_readable}')
+    print(f'starting from step {start_step}')
 
     # training
 
@@ -158,6 +162,11 @@ def main(
             }
             with open(str(checkpoint_path / f'ckpt_{unix_time}.pkl'), 'wb') as f:
                 pickle.dump(package, f)
+
+            checkpoints = sorted(checkpoint_path.glob('**/ckpt_*'))
+            num_checkpoints = len(checkpoints)
+            for checkpoint_path_rm in checkpoints[:max(0, num_checkpoints - checkpoint_keep_n)]:
+                silentremove(checkpoint_path_rm)
 
         if i % sample_every == 0:
             prime = data[0][:prime_length]
