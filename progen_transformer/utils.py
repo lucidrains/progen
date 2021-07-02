@@ -1,7 +1,9 @@
+import os, errno
+from shutil import rmtree
+
 from jax import random, nn, value_and_grad, vmap, pmap, jit, lax
 from jax.lax import top_k
 import jax.numpy as np
-from shutil import rmtree
 
 # helper functions
 

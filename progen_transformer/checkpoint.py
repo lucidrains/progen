@@ -1,5 +1,3 @@
-# for handling saving and loading checkpoints
-# from either filesystem or google cloud storage
 import time
 import os, errno
 from pathlib import Path
@@ -8,11 +6,6 @@ from functools import partial
 from google.cloud import storage
 from cloudpickle import pickle
 from progen_transformer.utils import clear_directory_, silentremove
-
-# constants
-
-GCS_READ_TIMEOUT = 60 * 30
-GCS_WRITE_TIMEOUT = 60 * 30
 
 # filesystem checkpoint fns
 
@@ -44,6 +37,9 @@ def file_save_checkpoint(path, package, keep_last_n = None):
         silentremove(path_to_rm)
 
 # gcs checkpoint fns
+
+GCS_READ_TIMEOUT = 60 * 30
+GCS_WRITE_TIMEOUT = 60 * 30
 
 def gcs_reset_checkpoint(bucket):
     bucket.delete_blobs(list(bucket.list_blobs()))
