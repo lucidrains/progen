@@ -39,7 +39,7 @@ logits = model.apply(params, next(rng), seq) # (1024, 256)
 Download Uniref50 from <a href="https://www.uniprot.org/downloads">UniProt</a> and place `uniref50.fasta` in the root directory
 
 ```bash
-$ python gen_train_data.py
+$ python generate_data.py
 ```
 
 You should see a lot of green if everything succeeds. Then
