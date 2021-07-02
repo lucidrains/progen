@@ -69,9 +69,13 @@ def gumbel_noise(rng, shape):
     noise = random.uniform(rng, shape = shape, minval = 0., maxval = 1.)
     return -log(-log(noise))
 
-def sample(rng, fn, params, prime, length, top_k = None):
+def sample(rng, fn, params, prime, length, top_k = None, add_bos = False):
     start_pos = prime.shape[-1]
-    seq = np.pad(prime, (0, length - prime.shape[-1]))
+    pad_right = length - prime.shape[-1]
+
+    padding = (0, pad_right) if not add_bos else (1, pad_right - 1)
+    seq = np.pad(prime, padding)
+
     one_hots = np.eye(length, dtype = int)
 
     for curr_pos in range(start_pos, length):

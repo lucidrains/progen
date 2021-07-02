@@ -75,11 +75,9 @@ def main(
 
     prime_tokens = encode_tokens(prime)
     prime_length = len(prime_tokens) + 1
-
     prime_tensor = np.array(prime_tokens, dtype = np.uint16)
-    prime_tensor = np.pad(prime_tensor, ((1, 0)), constant_values = 0)
 
-    sampled = sample(rng, model_apply, params, prime_tensor, seq_len, top_k = 25)
+    sampled = sample(rng, model_apply, params, prime_tensor, seq_len, top_k = 25, add_bos = True)
     sampled_str = decode_tokens(sampled[prime_length:])
 
     print("\n", prime, "\n", "*" * 40, "\n", sampled_str)
