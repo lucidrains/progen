@@ -1,7 +1,6 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import time
 import gzip
 
 import click
@@ -14,7 +13,6 @@ import tqdm
 import numpy as np
 
 from omegaconf import OmegaConf
-from cloudpickle import pickle
 
 import jax
 from jax import nn, random, jit, tree_util
@@ -25,7 +23,7 @@ from haiku import PRNGSequence
 from progen_transformer import ProGen
 from progen_transformer.data import decode_tokens, iterator_from_tfrecords_folder
 from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_, confirm
-from progen_transformer.checkpoint import silentremove
+from progen_transformer.checkpoint import get_checkpoint_fns
 
 import wandb
 
@@ -82,13 +80,12 @@ def main(
 ):
     # prepare folders
 
+    reset_checkpoint, get_last_checkpoint, save_checkpoint = get_checkpoint_fns(checkpoint_path)
+
     if new:
         if not confirm('are you sure you want to clear all your checkpoints and restart training?'):
             exit()
-        rmtree(str(checkpoint_path), ignore_errors = True)
-
-    checkpoint_path = Path(checkpoint_path)
-    checkpoint_path.mkdir(parents = True, exist_ok = True)
+        reset_checkpoint()
 
     # setup model and params
 
@@ -113,15 +110,12 @@ def main(
 
     # initialize all states, or load from checkpoint
 
-    checkpoints = sorted(checkpoint_path.glob('**/ckpt_*'))
-    has_checkpoints = len(checkpoints) > 0
+    last_checkpoint = get_last_checkpoint()
 
-    if has_checkpoints:
-        with open(str(checkpoints[-1]), 'rb') as f:
-            package = pickle.load(f)
-            params = package['params']
-            optim_state = package['optim_state']
-            start_step = package['next_step']
+    if last_checkpoint is not None:
+        params = last_checkpoint['params']
+        optim_state = last_checkpoint['optim_state']
+        start_step = last_checkpoint['next_step']
     else:
         mock_data = np.zeros((model_kwargs['seq_len'],), dtype = np.uint8)
         params = model.init(next(rng), mock_data)
@@ -166,19 +160,13 @@ def main(
             wandb.log({'loss': loss.item()})
 
         if i % checkpoint_every == 0:
-            unix_time = int(time.time())
             package = {
                 'next_step': i + 1,
                 'params': params,
                 'optim_state': optim_state
             }
-            with open(str(checkpoint_path / f'ckpt_{unix_time}.pkl'), 'wb') as f:
-                pickle.dump(package, f)
 
-            checkpoints = sorted(checkpoint_path.glob('**/ckpt_*'))
-            num_checkpoints = len(checkpoints)
-            for checkpoint_path_rm in checkpoints[:max(0, num_checkpoints - checkpoint_keep_n)]:
-                silentremove(checkpoint_path_rm)
+            save_checkpoint(package, checkpoint_keep_n)
 
         if i % sample_every == 0:
             prime = data[0][:prime_length]

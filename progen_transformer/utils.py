@@ -1,6 +1,7 @@
 from jax import random, nn, value_and_grad, vmap, pmap, jit, lax
 from jax.lax import top_k
 import jax.numpy as np
+from shutil import rmtree
 
 # helper functions
 
@@ -16,6 +17,16 @@ def confirm(question):
         lower_resp = resp.lower()
         if lower_resp in ('y', 'n'):
             return lower_resp == 'y'
+
+def clear_directory_(path):
+    rmtree(str(path), ignore_errors = True)
+    path.mkdir(exist_ok = True, parents = True)
+
+def silentremove(filename):
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
 
 # training functions
 

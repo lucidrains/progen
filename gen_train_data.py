@@ -8,23 +8,18 @@ from Bio import SeqIO
 from tfrecord import TFRecordWriter
 import numpy as np
 from random import random
-from shutil import rmtree
 from pathlib import Path
 
 from omegaconf import OmegaConf
 from dagster import execute_pipeline, pipeline, solid
+
 from progen_transformer.data import write_tfrecord
+from progen_transformer.utils import clear_directory_
 
 # constants
 
 TMP_DIR = Path('/tmp') / 'progen-seqs'
 NUM_SEQUENCES_PER_FILE = 1000000
-
-# helper functions
-
-def clear_directory_(path):
-    rmtree(str(path), ignore_errors = True)
-    path.mkdir(exist_ok = True, parents = True)
 
 # DAG functions
 

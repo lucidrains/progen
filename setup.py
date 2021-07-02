@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="progen-transformer",
     packages=find_packages(),
-    version="0.0.12",
+    version="0.0.14",
     license="MIT",
     description="Protein Generation (ProGen)",
     author="Phil Wang",
