@@ -34,7 +34,7 @@ params = model.init(next(rng), seq)
 logits = model.apply(params, next(rng), seq) # (1024, 256)
 ```
 
-## Training from Uniref
+## Training
 
 Download Uniref50 from <a href="https://www.uniprot.org/downloads">UniProt</a> and place `uniref50.fasta` in the root directory
 
