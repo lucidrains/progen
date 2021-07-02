@@ -45,12 +45,10 @@ def file_save_checkpoint(path, package, keep_last_n = None):
 
 # gcs checkpoint fns
 
-def gcs_reset_checkpoint(obj):
-    client, bucket = obj
+def gcs_reset_checkpoint(bucket):
     bucket.delete_blobs(list(bucket.list_blobs()))
 
-def gcs_get_last_checkpoint(obj):
-    client, bucket = obj
+def gcs_get_last_checkpoint(bucket):
     blobs = sorted(list(bucket.list_blobs()))
 
     if len(blobs) == 0:
@@ -67,8 +65,7 @@ def gcs_get_last_checkpoint(obj):
 
     return package
 
-def gcs_save_checkpoint(obj, package, keep_last_n = None):
-    client, bucket = obj
+def gcs_save_checkpoint(bucket, package, keep_last_n = None):
     unix_time = int(time.time())
     blobs = sorted(list(bucket.list_blobs()))
     num_checkpoints = len(blobs)
@@ -104,9 +101,7 @@ def get_checkpoint_fns(path):
     else:
         client = storage.Client()
         bucket_name = path[5:]
-        bucket = client.get_bucket(bucket_name)
-
-        obj = (client, bucket)
+        obj = client.get_bucket(bucket_name)
 
         fns = (
             gcs_reset_checkpoint,
