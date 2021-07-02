@@ -51,23 +51,35 @@ def fasta_to_tmp_files(context):
 @solid
 def files_to_tfrecords(context):
     config = context.solid_config
-    permuted_sequences = np.random.permutation(config['num_samples'])
+    num_samples = len([*TMP_DIR.glob('**/*')])
+    num_valids = int(config['fraction_valid_data'] * num_samples)
+
+    # split out validation sequences
+
+    permuted_sequences = np.random.permutation(num_samples)
+    valid_seqs, train_seqs = np.split(permuted_sequences, [num_valids])
+
+    # clear directory to write to
 
     write_to_path = Path(config['write_to'])
     clear_directory_(write_to_path)
 
-    num_split = ceil(config['num_samples'] / NUM_SEQUENCES_PER_FILE)
-    for file_index, indices in enumerate(np.array_split(permuted_sequences, num_split)):
-        num_sequences = len(indices)
+    # loop and write all train and valid files to tfrecords
 
-        writer = TFRecordWriter(str(write_to_path / f'./{file_index}.{num_sequences}.tfrecord'))
+    for (seq_type, seqs) in (('train', train_seqs), ('valid', valid_seqs)):
+        num_split = ceil(seqs.shape[0] / NUM_SEQUENCES_PER_FILE)
 
-        for index in indices:
-            filename = str(TMP_DIR / str(index))
-            with gzip.open(filename, 'rb') as f:
-                write_tfrecord(writer, f.read())
+        for file_index, indices in enumerate(np.array_split(seqs, num_split)):
+            num_sequences = len(indices)
 
-        writer.close()
+            writer = TFRecordWriter(str(write_to_path / f'./{file_index}.{num_sequences}.{seq_type}.tfrecord'))
+
+            for index in indices:
+                filename = str(TMP_DIR / str(index))
+                with gzip.open(filename, 'rb') as f:
+                    write_tfrecord(writer, f.read())
+
+            writer.close()
 
 @pipeline
 def main_pipeline():

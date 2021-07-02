@@ -59,14 +59,16 @@ Model checkpoints will be saved periodically to `./ckpts`
 
 ## Todo
 
-- [ ] train tfrecords from google cloud storage path
-- [ ] generate validation tfrecords
-- [ ] add panda integration with GO annotations
+- [ ] train compressed gzip tfrecords from google cloud storage path
 - [ ] resume from correct place in tfrecord even if batch size is changed inbetween runs, display number of sequences processed (aiming for 1 billion)
 - [ ] model parallelism with pjit
 - [ ] bfloat16 on xla
+- [ ] join in GO annotations with pandas dataframe
+- [ ] setup annotation -> template string system, all configuration driven, find easy way to test. offer two types of annotations, one parsed from uniref descriptions, the other from GO annotation presence
+- [ ] add multiple data sources (check out trembl)
+- [x] generate validation tfrecords
 - [x] checkpoint and resume from a google cloud storage path
-- [x] config to annotation to template string with jinja2 - use jinja2 for wandb html logging as well
+- [x] use jinja2 for wandb html sample logging
 - [x] manage experimental tracker state, and also allow ability to turn it off by piping to noop
 - [x] add a confirmation before clearing a folder for --new run
 - [x] engineer mask in cross entropy loss so that padding can be reused as end-of-string token

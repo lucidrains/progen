@@ -3,3 +3,4 @@ write_to: './train_data'
 num_samples: 25000
 max_seq_len: 1024
 prob_invert_seq_annotation: 0.5
+fraction_valid_data: 0.025

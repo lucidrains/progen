@@ -22,9 +22,9 @@ def collate_fn(batch, pad_length, offset = 0):
     padded_tensors = map(lambda t: np.pad(t, (0, pad_length - t.shape[-1])), tensors)
     return np.stack(list(padded_tensors))
 
-def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, skip = 0):
+def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = 'train', skip = 0):
     folder = Path(folder)
-    filenames = [str(p) for p in folder.glob(f'**/*.tfrecord')]
+    filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord')]
     dataset = tf.data.TFRecordDataset(filenames)
 
     dataset = dataset.skip(skip)

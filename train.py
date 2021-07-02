@@ -134,11 +134,19 @@ def main(
 
     # get tf dataset
 
-    train_loader = iterator_from_tfrecords_folder(
+    train_dataset = iterator_from_tfrecords_folder(
         data_path,
         seq_len = model_kwargs['seq_len'],
         batch_size = batch_size,
-        skip = start_step
+        skip = start_step,
+        data_type = 'train'
+    )
+
+    valid_dataset = iterator_from_tfrecords_folder(
+        data_path,
+        seq_len = model_kwargs['seq_len'],
+        batch_size = 1,
+        data_type = 'valid'
     )
 
     # print
@@ -149,7 +157,7 @@ def main(
     # training
 
     for i in tqdm.tqdm(range(start_step, num_batches), mininterval = 10., desc = 'training'):
-        data = next(train_loader)
+        data = next(train_dataset)
 
         loss, grads = loss_fn(params, next(rng), data)
         updates, optim_state = optim.update(grads, optim_state, params)
@@ -169,7 +177,8 @@ def main(
             save_checkpoint(package, checkpoint_keep_n)
 
         if i % sample_every == 0:
-            prime = data[0][:prime_length]
+            valid_data = next(valid_dataset)[0]
+            prime = valid_data[:prime_length]
             prime_str = decode_tokens(prime)
 
             sampled = sample(rng, model_apply, params, prime, seq_len, top_k = 25)
