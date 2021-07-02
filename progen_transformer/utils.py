@@ -10,6 +10,13 @@ def exists(val):
 def log(t, eps = 1e-20):
     return np.log(t + eps)
 
+def confirm(question):
+    while True:
+        resp = input(f'{question} (y/n) ')
+        lower_resp = resp.lower()
+        if lower_resp in ('y', 'n'):
+            return lower_resp == 'y'
+
 # training functions
 
 def cross_entropy(logits, targets, axis = -1, ignore_index = 0):

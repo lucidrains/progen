@@ -22,7 +22,7 @@ from haiku import PRNGSequence
 
 from progen_transformer import ProGen
 from progen_transformer.data import decode_tokens, iterator_from_tfrecords_folder
-from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_
+from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_, confirm
 from progen_transformer.checkpoint import silentremove
 
 import wandb
@@ -75,6 +75,8 @@ def main(
     # prepare folders
 
     if new:
+        if not confirm('are you sure you want to clear all your checkpoints and restart training?'):
+            exit()
         rmtree(str(checkpoint_path), ignore_errors = True)
 
     checkpoint_path = Path(checkpoint_path)

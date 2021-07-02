@@ -67,7 +67,7 @@ Model checkpoints will be saved periodically to `./ckpts`
 - [ ] model parallelism with pjit
 - [ ] manage experimental tracker state, and also allow ability to turn it off by piping to noop
 - [ ] resume from correct place in tfrecord even if batch size is changed inbetween runs, display number of sequences processed (aiming for 1 billion)
-- [ ] add a confirmation before clearing a folder for --new run
+- [x] add a confirmation before clearing a folder for --new run
 - [x] engineer mask in cross entropy loss so that padding can be reused as end-of-string token
 - [x] flip seq # annotation order with prob set in config
 - [x] keep N last checkpoints
