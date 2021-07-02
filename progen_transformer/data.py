@@ -22,7 +22,7 @@ def collate_fn(batch, pad_length, offset = 0):
     padded_tensors = map(lambda t: np.pad(t, (0, pad_length - t.shape[-1])), tensors)
     return np.stack(list(padded_tensors))
 
-def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = 'train', skip = 0):
+def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = 'train', skip = 0, loop = False):
     folder = Path(folder)
     filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord')]
     dataset = tf.data.TFRecordDataset(filenames)
@@ -32,13 +32,17 @@ def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = '
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
-    for batch in dataset:
-        seq = batch['seq']
-        batch_size = seq.shape[0]
-        seq = collate_fn(seq, pad_length = seq_len, offset = 1)
-        bos = np.zeros((batch_size, 1), dtype = np.uint16)
-        seq = np.concatenate((bos, seq), axis = 1)
-        yield seq
+    while True:
+        for batch in dataset:
+            seq = batch['seq']
+            batch_size = seq.shape[0]
+            seq = collate_fn(seq, pad_length = seq_len, offset = 1)
+            bos = np.zeros((batch_size, 1), dtype = np.uint16)
+            seq = np.concatenate((bos, seq), axis = 1)
+            yield seq
+
+        if not loop:
+            break
 
 # tokenization
 

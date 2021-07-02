@@ -145,8 +145,9 @@ def main(
     valid_dataset = iterator_from_tfrecords_folder(
         data_path,
         seq_len = model_kwargs['seq_len'],
-        batch_size = 1,
-        data_type = 'valid'
+        batch_size = batch_size,
+        data_type = 'valid',
+        loop = True
     )
 
     # print
@@ -175,6 +176,12 @@ def main(
             }
 
             save_checkpoint(package, checkpoint_keep_n)
+
+        if i % validate_every == 0:
+            valid_data = next(valid_dataset)
+            loss, _ = loss_fn(params, next(rng), valid_data)
+            print(f'valid_loss: {loss.item()}')
+            wandb.log({'valid_loss': loss.item()})
 
         if i % sample_every == 0:
             valid_data = next(valid_dataset)[0]
