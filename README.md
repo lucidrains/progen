@@ -67,6 +67,7 @@ Model checkpoints will be saved periodically to `./ckpts`
 - [ ] setup annotation -> template string system, all configuration driven, find easy way to test. offer two types of annotations, one parsed from uniref descriptions, the other from GO annotation presence
 - [ ] add multiple data sources (check out trembl)
 - [ ] when sampling, prime with entire sequence prior to the pound sign (intersection of sequence and annotation)
+- [ ] remove tfrecord package and just use tfrecordwriter with gzip
 - [x] generate validation tfrecords
 - [x] checkpoint and resume from a google cloud storage path
 - [x] use jinja2 for wandb html sample logging
