@@ -66,6 +66,7 @@ Model checkpoints will be saved periodically to `./ckpts`
 - [ ] join in GO annotations with pandas dataframe
 - [ ] setup annotation -> template string system, all configuration driven, find easy way to test. offer two types of annotations, one parsed from uniref descriptions, the other from GO annotation presence
 - [ ] add multiple data sources (check out trembl)
+- [ ] when sampling, prime with entire sequence prior to the pound sign (intersection of sequence and annotation)
 - [x] generate validation tfrecords
 - [x] checkpoint and resume from a google cloud storage path
 - [x] use jinja2 for wandb html sample logging
