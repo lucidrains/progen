@@ -57,6 +57,18 @@ $ python train.py --new
 
 Model checkpoints will be saved periodically to `./ckpts`
 
+Finally, to sample from your checkpoint, just do
+
+```bash
+$ python sample.py
+```
+
+You can pass a prime with `--prime`. You can either pass the annotations, followed by `#`, to get the generated sequence, or pass the sequence (also followed by `#`) and get the generated annotations
+
+```bash
+$ python sample.py --prime "[Tax=Mammalia] #"
+```
+
 ## Todo
 
 - [ ] train compressed gzip tfrecords from google cloud storage path

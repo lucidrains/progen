@@ -47,7 +47,7 @@ def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = '
 # tokenization
 
 def encode_token(token):
-    return token.encode('utf-8') + 1
+    return ord(token) + 1
 
 def decode_token(token):
     if token < 0:
