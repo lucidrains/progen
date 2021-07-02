@@ -23,6 +23,7 @@ setup(
         "dagster",
         "dagit",
         "dm-haiku",
+        "google-cloud-storage",
         "humanize",
         "jax",
         "jaxlib",
