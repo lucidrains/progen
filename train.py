@@ -1,14 +1,16 @@
 from dotenv import load_dotenv
 load_dotenv()
 
+import time
+import gzip
+
 import click
 import humanize
-import time
+from jinja2 import Template
 from random import randrange
 from shutil import rmtree
 from pathlib import Path
 import tqdm
-import gzip
 import numpy as np
 
 from omegaconf import OmegaConf
@@ -26,6 +28,10 @@ from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng
 from progen_transformer.checkpoint import silentremove
 
 import wandb
+
+# sample html
+
+sample_tmpl = Template("""<i>{{prime_str}}</i><br/><br/><div style="overflow-wrap: break-word;">{{sampled_str}}</div>""")
 
 # speedup rng
 
@@ -50,6 +56,7 @@ set_hardware_rng_(jax)
 @click.option('--prime_length', default = 25)
 @click.option('--seq_len', default = 1024)
 @click.option('--data_path', default = './train_data')
+@click.option('--wandb_off', default = False, is_flag = True)
 @click.option('--wandb_project_name', default = 'progen-training')
 @click.option('--new', default = False, is_flag = True)
 def main(
@@ -69,6 +76,7 @@ def main(
     prime_length,
     seq_len,
     data_path,
+    wandb_off,
     wandb_project_name,
     new
 ):
@@ -126,7 +134,9 @@ def main(
     num_params_readable = humanize.naturalsize(num_params)
 
     wandb.config.num_params = num_params
-    wandb.init(project = wandb_project_name)
+
+    wandb_kwargs = {'mode': 'disabled'} if wandb_off else {}
+    wandb.init(project = wandb_project_name, **wandb_kwargs)
 
     # get tf dataset
 
@@ -173,13 +183,12 @@ def main(
         if i % sample_every == 0:
             prime = data[0][:prime_length]
             prime_str = decode_tokens(prime)
-            print(prime_str, "\n", "*" * 40)
 
             sampled = sample(rng, model_apply, params, prime, seq_len, top_k = 25)
             sampled_str = decode_tokens(sampled[prime_length:])
-            print(sampled_str)
 
-            wandb.log({'samples': wandb.Html(f'<i>{prime_str}</i><br/><br/><div style="overflow-wrap: break-word;">{sampled_str}</div>')})
+            print(prime_str, "\n", "*" * 40, "\n", sampled_str)
+            wandb.log({'samples': wandb.Html(sample_tmpl.render(prime_str = prime_str, sampled_str = sampled_str))})
 
 if __name__ == '__main__':
     main()

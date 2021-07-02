@@ -26,6 +26,7 @@ setup(
         "humanize",
         "jax",
         "jaxlib",
+        "Jinja2",
         "omegaconf",
         "optax",
         "python-dotenv",
