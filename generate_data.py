@@ -5,7 +5,6 @@ from math import ceil
 from itertools import islice
 from Bio import SeqIO
 
-from tfrecord import TFRecordWriter
 import numpy as np
 from random import random
 from pathlib import Path
@@ -13,8 +12,8 @@ from pathlib import Path
 from omegaconf import OmegaConf
 from dagster import execute_pipeline, pipeline, solid
 
-from progen_transformer.data import write_tfrecord
-from progen_transformer.utils import clear_directory_
+from progen_transformer.data import with_tfrecord_writer
+from progen_transformer.utils import clear_directory_, silentremove
 
 # constants
 
@@ -71,15 +70,14 @@ def files_to_tfrecords(context):
 
         for file_index, indices in enumerate(np.array_split(seqs, num_split)):
             num_sequences = len(indices)
+            tfrecord_filename = f'./{file_index}.{num_sequences}.{seq_type}.tfrecord.gz'
+            tfrecord_path = str(write_to_path / tfrecord_filename)
 
-            writer = TFRecordWriter(str(write_to_path / f'./{file_index}.{num_sequences}.{seq_type}.tfrecord'))
-
-            for index in indices:
-                filename = str(TMP_DIR / str(index))
-                with gzip.open(filename, 'rb') as f:
-                    write_tfrecord(writer, f.read())
-
-            writer.close()
+            with with_tfrecord_writer(tfrecord_path) as write:
+                for index in indices:
+                    filename = str(TMP_DIR / str(index))
+                    with gzip.open(filename, 'rb') as f:
+                        write(f.read())
 
 @pipeline
 def main_pipeline():

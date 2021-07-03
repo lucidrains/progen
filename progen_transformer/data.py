@@ -1,12 +1,24 @@
 import tfrecord
 import tensorflow as tf
 import numpy as np
+from functools import partial
 from pathlib import Path
-
+from contextlib import contextmanager
 # writing tfrecords
 
-def write_tfrecord(writer, datum):
-    writer.write({'seq': (datum, 'byte')})
+def write(writer, values):
+    record_bytes = tf.train.Example(features = tf.train.Features(feature={
+        'seq': tf.train.Feature(bytes_list = tf.train.BytesList(value=[values]))
+    })).SerializeToString()
+
+    writer.write(record_bytes)
+
+@contextmanager
+def with_tfrecord_writer(path):
+    options = tf.io.TFRecordOptions(compression_type = 'GZIP')
+
+    with tf.io.TFRecordWriter(path, options = options) as writer:
+        yield partial(write, writer)
 
 # reading tfrecords
 
@@ -26,12 +38,13 @@ def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = '
     is_gcs_path = folder.startswith('gs://')
 
     if is_gcs_path:
-        filenames = tf.io.gfile.glob(f'{folder}/*.{data_type}.tfrecord')
+        filenames = tf.io.gfile.glob(f'{folder}/*.{data_type}.tfrecord.gz')
     else:
         folder = Path(folder)
-        filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord')]
+        filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord.gz')]
 
-    dataset = tf.data.TFRecordDataset(filenames)
+    print(filenames)
+    dataset = tf.data.TFRecordDataset(filenames, compression_type = 'GZIP')
 
     dataset = dataset.skip(skip)
     dataset = dataset.map(parse_fn)
