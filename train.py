@@ -115,12 +115,12 @@ def main(
     if last_checkpoint is not None:
         params = last_checkpoint['params']
         optim_state = last_checkpoint['optim_state']
-        start_step = last_checkpoint['next_step']
+        start_seq_index = last_checkpoint['next_seq_index']
     else:
         mock_data = np.zeros((model_kwargs['seq_len'],), dtype = np.uint8)
         params = model.init(next(rng), mock_data)
         optim_state = optim.init(params)
-        start_step = 0
+        start_seq_index = 0
 
     # experiment tracker
 
@@ -134,30 +134,36 @@ def main(
 
     # get tf dataset
 
-    train_dataset = iterator_from_tfrecords_folder(
-        data_path,
+    total_train_seqs, get_train_dataset = iterator_from_tfrecords_folder(data_path, data_type = 'train')
+    total_valid_seqs, get_valid_dataset = iterator_from_tfrecords_folder(data_path, data_type = 'valid',)
+
+    assert total_train_seqs > 0, 'no protein sequences found for training'
+    assert total_valid_seqs > 0, 'no protein sequences found for validation'
+
+    train_dataset = get_train_dataset(
         seq_len = model_kwargs['seq_len'],
         batch_size = batch_size,
-        skip = start_step,
-        data_type = 'train'
+        skip = start_seq_index
     )
 
-    valid_dataset = iterator_from_tfrecords_folder(
-        data_path,
+    valid_dataset = get_valid_dataset(
         seq_len = model_kwargs['seq_len'],
         batch_size = batch_size,
-        data_type = 'valid',
         loop = True
     )
 
     # print
 
     print(f'params: {num_params_readable}')
-    print(f'starting from step {start_step}')
+    print(f'num sequences: {total_train_seqs}')
+    print(f'starting from sequence {start_seq_index}')
 
     # training
 
-    for i in tqdm.tqdm(range(start_step, num_batches), mininterval = 10., desc = 'training'):
+    seq_index_ranges = range(start_seq_index, total_train_seqs, batch_size)
+    total_batches_left = len(seq_index_ranges)
+
+    for i, seq_index in tqdm.tqdm(enumerate(seq_index_ranges), mininterval = 10., desc = 'training', total = total_batches_left):
         data = next(train_dataset)
 
         loss, grads = loss_fn(params, next(rng), data)
@@ -170,12 +176,13 @@ def main(
 
         if i % checkpoint_every == 0:
             package = {
-                'next_step': i + 1,
+                'next_seq_index': seq_index + batch_size,
                 'params': params,
                 'optim_state': optim_state
             }
 
             save_checkpoint(package, checkpoint_keep_n)
+            print(f"checkpoint to start at sequence index of {package['next_seq_index']}")
 
         if i % validate_every == 0:
             valid_data = next(valid_dataset)

@@ -34,7 +34,7 @@ def collate_fn(batch, pad_length, offset = 0):
     padded_tensors = map(lambda t: np.pad(t, (0, pad_length - t.shape[-1])), tensors)
     return np.stack(list(padded_tensors))
 
-def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = 'train', skip = 0, loop = False):
+def iterator_from_tfrecords_folder(folder, data_type = 'train'):
     is_gcs_path = folder.startswith('gs://')
 
     if is_gcs_path:
@@ -43,24 +43,34 @@ def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = '
         folder = Path(folder)
         filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord.gz')]
 
-    dataset = tf.data.TFRecordDataset(filenames, compression_type = 'GZIP')
+    num_seqs = sum(map(lambda t: int(t.split('.')[-4]), filenames))
 
-    dataset = dataset.skip(skip)
-    dataset = dataset.map(parse_fn)
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(tf.data.AUTOTUNE)
+    def iter_fn(
+        seq_len,
+        batch_size,
+        skip = 0,
+        loop = False
+    ):
+        dataset = tf.data.TFRecordDataset(filenames, compression_type = 'GZIP')
 
-    while True:
-        for batch in dataset:
-            seq = batch['seq']
-            batch_size = seq.shape[0]
-            seq = collate_fn(seq, pad_length = seq_len, offset = 1)
-            bos = np.zeros((batch_size, 1), dtype = np.uint16)
-            seq = np.concatenate((bos, seq), axis = 1)
-            yield seq
+        dataset = dataset.skip(skip)
+        dataset = dataset.map(parse_fn)
+        dataset = dataset.batch(batch_size)
+        dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
-        if not loop:
-            break
+        while True:
+            for batch in dataset:
+                seq = batch['seq']
+                batch_size = seq.shape[0]
+                seq = collate_fn(seq, pad_length = seq_len, offset = 1)
+                bos = np.zeros((batch_size, 1), dtype = np.uint16)
+                seq = np.concatenate((bos, seq), axis = 1)
+                yield seq
+
+            if not loop:
+                break
+
+    return num_seqs, iter_fn
 
 # tokenization
 
