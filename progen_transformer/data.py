@@ -23,8 +23,14 @@ def collate_fn(batch, pad_length, offset = 0):
     return np.stack(list(padded_tensors))
 
 def iterator_from_tfrecords_folder(folder, *, seq_len, batch_size, data_type = 'train', skip = 0, loop = False):
-    folder = Path(folder)
-    filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord')]
+    is_gcs_path = folder.startswith('gs://')
+
+    if is_gcs_path:
+        filenames = tf.io.gfile.glob(f'{folder}/*.{data_type}.tfrecord')
+    else:
+        folder = Path(folder)
+        filenames = [str(p) for p in folder.glob(f'**/*.{data_type}.tfrecord')]
+
     dataset = tf.data.TFRecordDataset(filenames)
 
     dataset = dataset.skip(skip)
