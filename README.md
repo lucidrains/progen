@@ -91,6 +91,7 @@ $ python train.py --mixed_precision
 - [ ] add multiple data sources (check out trembl)
 - [ ] when sampling, prime with entire sequence prior to the pound sign (intersection of sequence and annotation)
 - [ ] utilize all cores when processing data
+- [ ] save all training settings in the checkpoints too
 - [x] bfloat16 on xla
 - [x] resume from correct place in tfrecord even if batch size is changed inbetween runs, display number of sequences processed
 - [x] train compressed gzip tfrecords from google cloud storage path
