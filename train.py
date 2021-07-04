@@ -140,7 +140,13 @@ def main(
     wandb.config.num_params = num_params
 
     wandb_kwargs = {'mode': 'disabled'} if wandb_off else {}
+
+    if exists(last_checkpoint) and exists(last_checkpoint['run_id']):
+        run_id = last_checkpoint['run_id']
+        wandb_kwargs = {**wandb_kwargs, 'id': run_id, 'resume': 'allow'}
+
     wandb.init(project = wandb_project_name, **wandb_kwargs)
+    wandb_run_id = wandb.run.id if not wandb_off else None
 
     # get tf dataset
 
@@ -190,7 +196,8 @@ def main(
                 'next_seq_index': seq_index + effective_batch_size,
                 'params': params,
                 'optim_state': optim_state,
-                'model_config': model_kwargs
+                'model_config': model_kwargs,
+                'run_id': wandb_run_id
             }
 
             save_checkpoint(package, checkpoint_keep_n)
