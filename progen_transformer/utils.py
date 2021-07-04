@@ -7,6 +7,9 @@ import jax.numpy as np
 
 # helper functions
 
+def noop(x):
+    return x
+
 def exists(val):
     return val is not None
 
@@ -48,7 +51,9 @@ def cross_entropy(logits, targets, axis = -1, ignore_index = 0):
 
 def get_train_loss_fn(model, data_parallel = False):
     map_fn = pmap if data_parallel else vmap
-    batch_model_apply = jit(map_fn(model.apply, in_axes = (None, None, 0), out_axes = 0))
+    outer_jit = noop if data_parallel else jit
+
+    batch_model_apply = outer_jit(map_fn(model.apply, in_axes = (None, None, 0), out_axes = 0))
 
     @value_and_grad
     def loss_fn(params, key, data):

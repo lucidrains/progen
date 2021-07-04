@@ -39,10 +39,10 @@ set_hardware_rng_(jax)
 
 @click.command()
 @click.option('--seed', default = 42)
-@click.option('--num_batches', default = int(1e6))
 @click.option('--batch_size', default = 4)
 @click.option('--grad_accum_every', default = 4)
 @click.option('--learning_rate', default = 2e-4)
+@click.option('--data_parallel', default = False, is_flag = True)
 @click.option('--max_grad_norm', default = 0.5)
 @click.option('--validate_every', default = 100)
 @click.option('--sample_every', default = 500)
@@ -59,7 +59,6 @@ set_hardware_rng_(jax)
 @click.option('--new', default = False, is_flag = True)
 def main(
     seed,
-    num_batches,
     batch_size,
     grad_accum_every,
     learning_rate,
@@ -98,7 +97,7 @@ def main(
 
     model_apply = jit(model.apply)
     rng = PRNGSequence(seed)
-    loss_fn = get_train_loss_fn(model)
+    loss_fn = get_train_loss_fn(model, data_parallel = data_parallel)
 
     # optimizer
 
