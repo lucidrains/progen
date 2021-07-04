@@ -15,8 +15,8 @@ import numpy as np
 from omegaconf import OmegaConf
 
 import jax
-from jax import nn, random, jit, tree_util
-from optax import adam, clip_by_global_norm, chain, apply_updates, apply_every
+from jax import nn, random, jit, tree_util, tree_map
+from optax import adamw, clip_by_global_norm, chain, apply_updates, apply_every
 
 from haiku import PRNGSequence
 
@@ -42,6 +42,7 @@ set_hardware_rng_(jax)
 @click.option('--batch_size', default = 4)
 @click.option('--grad_accum_every', default = 4)
 @click.option('--learning_rate', default = 2e-4)
+@click.option('--weight_decay', default = 1e-3)
 @click.option('--data_parallel', default = False, is_flag = True)
 @click.option('--max_grad_norm', default = 0.5)
 @click.option('--validate_every', default = 100)
@@ -62,6 +63,8 @@ def main(
     batch_size,
     grad_accum_every,
     learning_rate,
+    weight_decay,
+    data_parallel,
     max_grad_norm,
     validate_every,
     sample_every,
@@ -101,9 +104,11 @@ def main(
 
     # optimizer
 
+    exclude_norm_and_bias_params = lambda p: tree_map(lambda x: x.ndim > 1, p)
+
     optim = chain(
         clip_by_global_norm(max_grad_norm),
-        adam(learning_rate),
+        adamw(learning_rate, weight_decay = weight_decay, mask = exclude_norm_and_bias_params),
         apply_every(grad_accum_every)
     )
 

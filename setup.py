@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name="progen-transformer",
     packages=find_packages(),
-    version="0.0.26",
+    version="0.0.27",
     license="MIT",
     description="Protein Generation (ProGen)",
     author="Phil Wang",
@@ -30,7 +30,7 @@ setup(
         "joblib",
         "Jinja2",
         "omegaconf",
-        "optax",
+        "optax>=0.0.9",
         "python-dotenv",
         "tensorflow",
         "tqdm",
