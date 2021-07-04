@@ -45,7 +45,7 @@ def main(
         exit(f'no checkpoints found at {checkpoint_path}')
 
     params = last_checkpoint['params']
-    steps = max(last_checkpoint['next_step'] - 1, 0)
+    num_seqs = max(last_checkpoint['next_seq_index'], 0)
 
     # setup model and params
 
@@ -67,7 +67,7 @@ def main(
     # print
 
     print(f'params: {num_params_readable}')
-    print(f'trained for {steps} steps')
+    print(f'trained for {num_seqs} sequences')
 
     # sample with prime
 
@@ -77,7 +77,7 @@ def main(
     prime_length = len(prime_tokens) + 1
     prime_tensor = np.array(prime_tokens, dtype = np.uint16)
 
-    sampled = sample(rng, model_apply, params, prime_tensor, seq_len, top_k = 25, add_bos = True)
+    sampled = sample(rng, jit(model_apply), params, prime_tensor, seq_len, top_k = 25, add_bos = True)
     sampled_str = decode_tokens(sampled[prime_length:])
 
     print("\n", prime, "\n", "*" * 40, "\n", sampled_str)

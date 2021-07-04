@@ -160,23 +160,23 @@ def main(
 
     # training
 
-    seq_index_ranges = range(start_seq_index, total_train_seqs, batch_size)
-    total_batches_left = len(seq_index_ranges)
+    effective_batch_size = batch_size * grad_accum_every
+    seq_index_ranges = range(start_seq_index, total_train_seqs, effective_batch_size)    
 
-    for i, seq_index in tqdm.tqdm(enumerate(seq_index_ranges), mininterval = 10., desc = 'training', total = total_batches_left):
-        data = next(train_dataset)
+    for i, seq_index in tqdm.tqdm(enumerate(seq_index_ranges), mininterval = 10., desc = 'training', total = len(seq_index_ranges)):
+        for _ in range(grad_accum_every):
+            data = next(train_dataset)
 
-        loss, grads = loss_fn(params, next(rng), data)
-        updates, optim_state = optim.update(grads, optim_state, params)
-        params = apply_updates(params, updates)
+            loss, grads = loss_fn(params, next(rng), data)
+            updates, optim_state = optim.update(grads, optim_state, params)
+            params = apply_updates(params, updates)
 
-        if i % grad_accum_every == 0:
-            print(f'loss: {loss.item()}')
-            wandb.log({'loss': loss.item()})
+        print(f'loss: {loss.item()}')
+        wandb.log({'loss': loss.item()})
 
         if i % checkpoint_every == 0:
             package = {
-                'next_seq_index': seq_index + batch_size,
+                'next_seq_index': seq_index + effective_batch_size,
                 'params': params,
                 'optim_state': optim_state
             }
