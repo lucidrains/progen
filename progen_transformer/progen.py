@@ -9,7 +9,7 @@ import haiku as hk
 from haiku import initializers
 from einops import rearrange, repeat
 
-from progen.utils import exists
+from progen_transformer.utils import exists
 
 # constants
 
