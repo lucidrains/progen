@@ -4,6 +4,7 @@ import jax
 from jax import random
 from jax import nn
 import jax.numpy as np
+import jmp
 
 import haiku as hk
 from haiku import initializers
@@ -209,8 +210,11 @@ class ProGenBase(hk.Module):
 
         return self.to_logits(x)
 
-def ProGen(**kwargs):
+def ProGen(mixed_precision = False, **kwargs):
     @hk.transform
     def inner(seq):
+        if mixed_precision:
+            policy = jmp.get_policy('params=float32,compute=float16,output=float32')
+            hk.mixed_precision.set_policy(ProGenBase, policy)
         return ProGenBase(**kwargs)(seq)
     return inner

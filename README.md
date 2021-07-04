@@ -69,15 +69,29 @@ You can pass a prime with `--prime`. You can either pass the annotations, follow
 $ python sample.py --prime "[Tax=Mammalia] #"
 ```
 
+## Mixed Precision
+
+To use mixed precision training, you'll need to install the latest Haiku with the following command
+
+```bash
+$ pip install git+https://github.com/deepmind/dm-haiku
+```
+
+Then make sure to set the `--mixed_precision` flag when invoking the training script
+
+```bash
+$ python train.py --mixed_precision
+```
+
 ## Todo
 
 - [ ] model parallelism with pjit
-- [ ] bfloat16 on xla
 - [ ] join in GO annotations with pandas dataframe
 - [ ] setup annotation -> template string system, all configuration driven, find easy way to test. offer two types of annotations, one parsed from uniref descriptions, the other from GO annotation presence
 - [ ] add multiple data sources (check out trembl)
 - [ ] when sampling, prime with entire sequence prior to the pound sign (intersection of sequence and annotation)
 - [ ] utilize all cores when processing data
+- [x] bfloat16 on xla
 - [x] resume from correct place in tfrecord even if batch size is changed inbetween runs, display number of sequences processed
 - [x] train compressed gzip tfrecords from google cloud storage path
 - [x] remove tfrecord package and just use tfrecordwriter with gzip

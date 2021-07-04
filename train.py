@@ -54,6 +54,7 @@ set_hardware_rng_(jax)
 @click.option('--model_name', default = 'default')
 @click.option('--prime_length', default = 25)
 @click.option('--seq_len', default = 1024)
+@click.option('--mixed_precision', default = False, is_flag = True)
 @click.option('--data_path', default = './train_data')
 @click.option('--wandb_off', default = False, is_flag = True)
 @click.option('--wandb_project_name', default = 'progen-training')
@@ -75,6 +76,7 @@ def main(
     model_name,
     prime_length,
     seq_len,
+    mixed_precision,
     data_path,
     wandb_off,
     wandb_project_name,
@@ -103,7 +105,10 @@ def main(
 
     # setup model and params
 
-    model = ProGen(**model_kwargs)
+    model = ProGen(**{
+        **model_kwargs,
+        'mixed_precision': mixed_precision
+    })
 
     model_apply = jit(model.apply)
     rng = PRNGSequence(seed)
