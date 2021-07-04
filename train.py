@@ -124,6 +124,7 @@ def main(
 
     # experiment tracker
 
+    seq_len = model_kwargs['seq_len']
     num_params = tree_util.tree_reduce(lambda acc, el: acc + el.size, params, 0)
     num_params_readable = humanize.naturalsize(num_params)
 
@@ -141,13 +142,13 @@ def main(
     assert total_valid_seqs > 0, 'no protein sequences found for validation'
 
     train_dataset = get_train_dataset(
-        seq_len = model_kwargs['seq_len'],
+        seq_len = seq_len,
         batch_size = batch_size,
         skip = start_seq_index
     )
 
     valid_dataset = get_valid_dataset(
-        seq_len = model_kwargs['seq_len'],
+        seq_len = seq_len,
         batch_size = batch_size,
         loop = True
     )
@@ -155,6 +156,7 @@ def main(
     # print
 
     print(f'params: {num_params_readable}')
+    print(f'sequence length: {seq_len}')
     print(f'num sequences: {total_train_seqs}')
     print(f'starting from sequence {start_seq_index}')
 

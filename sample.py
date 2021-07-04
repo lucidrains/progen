@@ -61,17 +61,17 @@ def main(
 
     # initialize all states, or load from checkpoint
 
+    seq_len = model_kwargs['seq_len']
     num_params = tree_util.tree_reduce(lambda acc, el: acc + el.size, params, 0)
     num_params_readable = humanize.naturalsize(num_params)
 
     # print
 
     print(f'params: {num_params_readable}')
+    print(f'sequence length: {seq_len}')
     print(f'trained for {num_seqs} sequences')
 
     # sample with prime
-
-    seq_len = model_kwargs['seq_len']
 
     prime_tokens = encode_tokens(prime)
     prime_length = len(prime_tokens) + 1
