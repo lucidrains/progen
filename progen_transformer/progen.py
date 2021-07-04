@@ -13,7 +13,6 @@ from progen_transformer.utils import exists
 
 # constants
 
-EPS = 1e-3
 ATTN_MASK_VALUE = -1e10
 
 # helpers
@@ -23,6 +22,7 @@ LayerNorm = partial(hk.LayerNorm, create_scale = True, create_offset = False, ax
 def fixed_pos_embedding(seq, dim):
     inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2) / dim))
     sinusoid_inp = np.einsum("i , j -> i j", np.arange(seq), inv_freq)
+    sinusoid_inp = repeat(sinusoid_inp, "b n -> b (n j)", j = 2)[None, :, :]
     return np.sin(sinusoid_inp), np.cos(sinusoid_inp)
 
 def rotate_every_two(x):
@@ -32,7 +32,7 @@ def rotate_every_two(x):
     return rearrange(x, "... d j -> ... (d j)")
 
 def apply_rotary_pos_emb(x, sincos):
-    sin, cos = map(lambda t: repeat(t, "b n -> b (n j)", j = 2)[None, :, :], sincos)
+    sin, cos = sincos
     rot_dim = sin.shape[-1]
     x, x_pass = x[..., :rot_dim], x[..., rot_dim:]
     x = (x * cos) + (rotate_every_two(x) * sin)
@@ -132,9 +132,11 @@ class SGU(hk.Module):
         *,
         dim,
         dim_out,
-        seq_len
+        seq_len,
+        eps = 1e-3
     ):
         super().__init__()
+        self.eps = eps
         self.seq_len = seq_len
         self.norm = LayerNorm()
         self.proj_out = hk.Linear(dim_out)
@@ -145,7 +147,7 @@ class SGU(hk.Module):
 
         gate = self.norm(gate)
 
-        init_scale = EPS / n
+        init_scale = self.eps / n
         init_eps = initializers.RandomUniform(minval = -init_scale, maxval = init_scale)
 
         weights = hk.get_parameter('spatial_weights', shape = (n, n), init = init_eps)
