@@ -105,6 +105,10 @@ $ python train.py --mixed_precision
 - [x] flip seq # annotation order with prob set in config
 - [x] keep N last checkpoints
 
+## Acknowledgements
+
+Many thanks goes out to <a href="https://github.com/kingoflolz">Ben Wang</a>, who showed this type of large-scale training can be achieved with <a href="https://github.com/kingoflolz/mesh-transformer-jax">GPT-J</a>
+
 ## Citations
 
 ```bibtex
