@@ -77,6 +77,7 @@ $ python sample.py --prime "[Tax=Mammalia] #"
 - [ ] setup annotation -> template string system, all configuration driven, find easy way to test. offer two types of annotations, one parsed from uniref descriptions, the other from GO annotation presence
 - [ ] add multiple data sources (check out trembl)
 - [ ] when sampling, prime with entire sequence prior to the pound sign (intersection of sequence and annotation)
+- [ ] utilize all cores when processing data
 - [x] resume from correct place in tfrecord even if batch size is changed inbetween runs, display number of sequences processed
 - [x] train compressed gzip tfrecords from google cloud storage path
 - [x] remove tfrecord package and just use tfrecordwriter with gzip
