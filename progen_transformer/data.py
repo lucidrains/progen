@@ -1,9 +1,9 @@
-import tfrecord
 import tensorflow as tf
 import numpy as np
 from functools import partial
 from pathlib import Path
 from contextlib import contextmanager
+
 # writing tfrecords
 
 def write(writer, values):
