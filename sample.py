@@ -3,8 +3,6 @@ load_dotenv()
 
 import click
 import humanize
-from pathlib import Path
-from omegaconf import OmegaConf
 
 import jax
 from jax import nn, random, jit, tree_util, numpy as np
@@ -25,14 +23,10 @@ set_hardware_rng_(jax)
 @click.command()
 @click.option('--seed', default = 42)
 @click.option('--checkpoint_path', default = './ckpts')
-@click.option('--config_path', default = './configs/model')
-@click.option('--model_name', default = 'default')
 @click.option('--prime', default = '')
 def main(
     seed,
     checkpoint_path,
-    config_path,
-    model_name,
     prime,
 ):
     # prepare folders
@@ -49,11 +43,7 @@ def main(
 
     # setup model and params
 
-    config_folder_path = Path(config_path)
-    config_path = config_folder_path / f'{model_name}.yml'
-    assert config_path.exists(), f'path to your model config {str(config_path)} does not exist'
-
-    model_kwargs = OmegaConf.load(str(config_path))
+    model_kwargs = last_checkpoint['model_config']
     model = ProGen(**model_kwargs)
 
     model_apply = jit(model.apply)

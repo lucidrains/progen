@@ -22,7 +22,7 @@ from haiku import PRNGSequence
 
 from progen_transformer import ProGen
 from progen_transformer.data import decode_tokens, iterator_from_tfrecords_folder
-from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_, confirm
+from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_, confirm, exists
 from progen_transformer.checkpoint import get_checkpoint_fns
 
 import wandb
@@ -89,13 +89,20 @@ def main(
             exit()
         reset_checkpoint()
 
+    # initialize all states, or load from checkpoint
+
+    last_checkpoint = get_last_checkpoint()
+
+    if not exists(last_checkpoint):
+        config_folder_path = Path(config_path)
+        config_path = config_folder_path / f'{model_name}.yml'
+        assert config_path.exists(), f'path to your model config {str(config_path)} does not exist'
+        model_kwargs = OmegaConf.load(str(config_path))
+    else:
+        model_kwargs = last_checkpoint['model_config']
+
     # setup model and params
 
-    config_folder_path = Path(config_path)
-    config_path = config_folder_path / f'{model_name}.yml'
-    assert config_path.exists(), f'path to your model config {str(config_path)} does not exist'
-
-    model_kwargs = OmegaConf.load(str(config_path))
     model = ProGen(**model_kwargs)
 
     model_apply = jit(model.apply)
@@ -112,11 +119,9 @@ def main(
         apply_every(grad_accum_every)
     )
 
-    # initialize all states, or load from checkpoint
+    # get params and optimizer state
 
-    last_checkpoint = get_last_checkpoint()
-
-    if last_checkpoint is not None:
+    if exists(last_checkpoint):
         params = last_checkpoint['params']
         optim_state = last_checkpoint['optim_state']
         start_seq_index = last_checkpoint['next_seq_index']
@@ -184,7 +189,8 @@ def main(
             package = {
                 'next_seq_index': seq_index + effective_batch_size,
                 'params': params,
-                'optim_state': optim_state
+                'optim_state': optim_state,
+                'model_config': model_kwargs
             }
 
             save_checkpoint(package, checkpoint_keep_n)
