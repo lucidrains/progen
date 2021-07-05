@@ -5,4 +5,4 @@ max_seq_len: 1024
 prob_seq_only: 0.1
 prob_invert_seq_annotation: 0.5
 fraction_valid_data: 0.025
-num_sequences_per_file: 1000
+num_sequences_per_file: 100000

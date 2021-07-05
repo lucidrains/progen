@@ -2,7 +2,7 @@ import os
 import gzip
 import click
 from math import ceil
-from itertools import islice
+from itertools import islice, chain
 from Bio import SeqIO
 
 import numpy as np
@@ -32,20 +32,35 @@ def fasta_to_tmp_files(context):
     it = filter(lambda t: len(t.seq) + len(t.description) + 10 <= config['max_seq_len'], it)
     it = islice(it, 0, config['num_samples'])
 
-    for index, sample in enumerate(it):
+    def fasta_row_to_sequence_strings(sample):
         seq = str(sample.seq)
         annotation = f'[{sample.description}]'
-        data = (annotation, seq)
+        sequences = []
+
+        seq_annot_pair = (annotation, seq)
 
         if random() <= config['prob_invert_seq_annotation']:
-            data = tuple(reversed(data))
+            seq_annot_pair = tuple(reversed(seq_annot_pair))
 
-        data = ' # '.join(data)
-        data = data.encode('utf-8')
+        sequence = ' # '.join(seq_annot_pair)
+        sequence = sequence.encode('utf-8')
+        sequences.append(sequence)
 
-        filename = str(TMP_DIR / str(index))
-        with gzip.open(filename, 'wb') as f:
+        if random() <= config['prob_seq_only']:
+            sequence = f'# {seq}'
+            sequence = sequence.encode('utf-8')
+            sequences.append(sequence)
+
+        return sequences
+
+    it = map(fasta_row_to_sequence_strings, it)
+    it = chain.from_iterable(it)
+
+    for index, data in enumerate(it):
+        filename = TMP_DIR / str(index)
+        with gzip.open(str(filename), 'wb') as f:
             f.write(data)
+
     return
 
 @solid
