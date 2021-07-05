@@ -1,6 +1,8 @@
 import os
 import gzip
 import click
+import re
+import random
 from math import ceil
 from functools import partial
 from itertools import islice, chain
@@ -24,19 +26,41 @@ TMP_DIR = Path('./.tmp')
 
 # functions
 
+def order_dict_by(d, fn):
+    keys = fn(d.keys())
+    return dict(tuple(map(lambda k: (k, d[k]), keys)))
+
+def get_annotations_from_description(config, description):
+    taxonomy_matches = re.findall(r'Tax=([a-zA-Z]*)', description)
+    annotations = dict()
+
+    if len(taxonomy_matches) > 0:
+        annotations['tax'] = taxonomy_matches[0]
+
+    return annotations
+
 def fasta_row_to_sequence_strings(config, sample):
     seq = str(sample.seq)
-    annotation = f'[{sample.description}]'
     sequences = []
 
-    seq_annot_pair = (annotation, seq)
+    annotations = get_annotations_from_description(config, sample.description)
+    # todo: gather annotations from GO
 
-    if random() <= config['prob_invert_seq_annotation']:
-        seq_annot_pair = tuple(reversed(seq_annot_pair))
+    if len(annotations) > 0:
+        sort_annot_by = random.shuffle if not config['sort_annotations'] else sorted
+        annotations = order_dict_by(annotations, sort_annot_by)
 
-    sequence = ' # '.join(seq_annot_pair)
-    sequence = sequence.encode('utf-8')
-    sequences.append(sequence)
+        annotation_str = [f"[{annot_name}={annot}]" for annot_name, annot in annotations.items()]
+        annotation_str = ' '.join(annotation_str)
+
+        seq_annot_pair = (annotation_str, seq)
+
+        if random() <= config['prob_invert_seq_annotation']:
+            seq_annot_pair = tuple(reversed(seq_annot_pair))
+
+        sequence = ' # '.join(seq_annot_pair)
+        sequence = sequence.encode('utf-8')
+        sequences.append(sequence)
 
     if random() <= config['prob_seq_only']:
         sequence = f'# {seq}'

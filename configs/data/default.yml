@@ -1,8 +1,9 @@
 read_from: './uniref50.fasta'
-write_to: 'gs://progen-train-data'
+write_to: './train_data'
 num_samples: 25000
 max_seq_len: 1024
 prob_seq_only: 0.1
 prob_invert_seq_annotation: 0.5
 fraction_valid_data: 0.025
 num_sequences_per_file: 100000
+sort_annotations: true
