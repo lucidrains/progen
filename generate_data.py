@@ -2,6 +2,7 @@ import os
 import gzip
 import click
 from math import ceil
+from functools import partial
 from itertools import islice, chain
 from Bio import SeqIO
 
@@ -21,6 +22,29 @@ from progen_transformer.utils import clear_directory_
 GCS_WRITE_TIMEOUT = 60 * 30
 TMP_DIR = Path('./.tmp')
 
+# functions
+
+def fasta_row_to_sequence_strings(config, sample):
+    seq = str(sample.seq)
+    annotation = f'[{sample.description}]'
+    sequences = []
+
+    seq_annot_pair = (annotation, seq)
+
+    if random() <= config['prob_invert_seq_annotation']:
+        seq_annot_pair = tuple(reversed(seq_annot_pair))
+
+    sequence = ' # '.join(seq_annot_pair)
+    sequence = sequence.encode('utf-8')
+    sequences.append(sequence)
+
+    if random() <= config['prob_seq_only']:
+        sequence = f'# {seq}'
+        sequence = sequence.encode('utf-8')
+        sequences.append(sequence)
+
+    return sequences
+
 # DAG functions
 
 @solid
@@ -31,29 +55,7 @@ def fasta_to_tmp_files(context):
     it = SeqIO.parse(config['read_from'], 'fasta')
     it = filter(lambda t: len(t.seq) + len(t.description) + 10 <= config['max_seq_len'], it)
     it = islice(it, 0, config['num_samples'])
-
-    def fasta_row_to_sequence_strings(sample):
-        seq = str(sample.seq)
-        annotation = f'[{sample.description}]'
-        sequences = []
-
-        seq_annot_pair = (annotation, seq)
-
-        if random() <= config['prob_invert_seq_annotation']:
-            seq_annot_pair = tuple(reversed(seq_annot_pair))
-
-        sequence = ' # '.join(seq_annot_pair)
-        sequence = sequence.encode('utf-8')
-        sequences.append(sequence)
-
-        if random() <= config['prob_seq_only']:
-            sequence = f'# {seq}'
-            sequence = sequence.encode('utf-8')
-            sequences.append(sequence)
-
-        return sequences
-
-    it = map(fasta_row_to_sequence_strings, it)
+    it = map(partial(fasta_row_to_sequence_strings, config), it)
     it = chain.from_iterable(it)
 
     for index, data in enumerate(it):
