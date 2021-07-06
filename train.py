@@ -22,7 +22,7 @@ from haiku import PRNGSequence
 
 from progen_transformer import ProGen
 from progen_transformer.data import decode_tokens, iterator_from_tfrecords_folder
-from progen_transformer.utils import sample, get_train_loss_fn, set_hardware_rng_, confirm, exists
+from progen_transformer.utils import sample, get_loss_fn, set_hardware_rng_, confirm, exists
 from progen_transformer.checkpoint import get_checkpoint_fns
 
 import wandb
@@ -112,7 +112,7 @@ def main(
 
     model_apply = jit(model.apply)
     rng = PRNGSequence(seed)
-    loss_fn = get_train_loss_fn(model, data_parallel = data_parallel)
+    loss_fn = get_loss_fn(model, data_parallel = data_parallel)
 
     # optimizer
 

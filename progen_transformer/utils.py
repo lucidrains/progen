@@ -1,9 +1,13 @@
+from math import ceil
 import os, errno
 from shutil import rmtree
 
+import jax
 from jax import random, nn, value_and_grad, vmap, pmap, jit, lax
 from jax.lax import top_k
 import jax.numpy as np
+
+from einops import rearrange
 
 # helper functions
 
@@ -35,9 +39,14 @@ def silentremove(filename):
 
 # training functions
 
+def masked_mean(t, mask, axis = None):
+    return (t * mask).sum(axis = axis) / mask.sum(axis = axis)
+
 def cross_entropy(logits, targets, axis = -1, ignore_index = 0):
     logprobs = nn.log_softmax(logits, axis = axis)
+
     nll = np.take_along_axis(logprobs, np.expand_dims(targets, axis = axis), axis = axis)
+    nll = nll.squeeze(-1)
 
     # mask for loss is engineered so that it learns from the first padding token
     # the padding token is reused as end-of-string for simplicity
@@ -46,22 +55,42 @@ def cross_entropy(logits, targets, axis = -1, ignore_index = 0):
     eos_mask = (~mask).cumsum(axis = -1) == 1
     mask = mask | eos_mask
 
-    ce = -np.mean(nll[mask])
+    ce = -masked_mean(nll, mask, axis = -1)
     return ce
 
-def get_train_loss_fn(model, data_parallel = False):
-    map_fn = pmap if data_parallel else vmap
-    outer_jit = noop if data_parallel else jit
-
-    batch_model_apply = outer_jit(map_fn(model.apply, in_axes = (None, None, 0), out_axes = 0))
-
-    @value_and_grad
+def get_loss_fn(model, data_parallel = False):
     def loss_fn(params, key, data):
-        inp, labels = data[:, :-1], data[:, 1:]
-        logits = batch_model_apply(params, key, inp)
+        ids, labels = data[:-1], data[1:]
+        logits = model.apply(params, key, ids)
         return cross_entropy(logits, labels, axis = -1)
 
-    return loss_fn
+    loss_fn = jit(vmap(loss_fn, in_axes = (None, None, 0), out_axes = 0))
+
+    if data_parallel:
+        loss_fn = pmap(loss_fn, in_axes = (None, None, 0), out_axes = 0)
+
+    @value_and_grad
+    def batched_loss_fn(params, key, data):
+        if not data_parallel:
+            values = loss_fn(params, key, data)
+            return np.mean(values)
+
+        mask = np.ones((data.shape[0],))
+
+        device_count = jax.local_device_count()
+        batch_size = data.shape[0]
+
+        remainder = (batch_size % device_count)
+        if remainder != 0:
+            padding = device_count - remainder
+            data = np.pad(data, ((0, padding), (0, 0)))
+            mask = np.pad(mask, ((0, padding)))
+
+        data, mask = map(lambda t: rearrange(t, '(p b) ... -> p b ...', p = device_count), (data, mask))
+        values = loss_fn(params, key, data)
+        return masked_mean(values, mask)
+
+    return batched_loss_fn
 
 # sampling functions
 
