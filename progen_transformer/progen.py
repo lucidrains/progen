@@ -23,14 +23,14 @@ LayerNorm = partial(hk.LayerNorm, create_scale = True, create_offset = False, ax
 def fixed_pos_embedding(seq, dim):
     inv_freq = 1.0 / (10000 ** (np.arange(0, dim, 2) / dim))
     sinusoid_inp = np.einsum("i , j -> i j", np.arange(seq), inv_freq)
-    sinusoid_inp = repeat(sinusoid_inp, "b n -> b (n j)", j = 2)[None, :, :]
+    sinusoid_inp = repeat(sinusoid_inp, "b n -> b (n r)", r = 2)[None, :, :]
     return np.sin(sinusoid_inp), np.cos(sinusoid_inp)
 
 def rotate_every_two(x):
     x = rearrange(x, '... (d r) -> ... d r', r = 2)
     x1, x2 = x[..., 0], x[..., 1]
     x = np.stack((-x2, x1), axis=-1)
-    return rearrange(x, "... d j -> ... (d j)")
+    return rearrange(x, "... d r -> ... (d r)")
 
 def apply_rotary_pos_emb(x, sincos):
     sin, cos = sincos
@@ -210,11 +210,12 @@ class ProGenBase(hk.Module):
 
         return self.to_logits(x)
 
-def ProGen(mixed_precision = False, **kwargs):
+def ProGen(mixed_precision = False, mixed_precision_policy = dict(params = 'float32', compute = 'float16', output = 'float32'), **kwargs):
     @hk.transform
     def inner(seq):
         if mixed_precision:
-            policy = jmp.get_policy('params=float32,compute=float16,output=float32')
+            serialized_policy = ','.join([f'{k}={v}' for k, v in mixed_precision_policy.items()])
+            policy = jmp.get_policy(serialized_policy)
             hk.mixed_precision.set_policy(ProGenBase, policy)
         return ProGenBase(**kwargs)(seq)
     return inner
