@@ -15,7 +15,6 @@ setup(
         "protein language model"
     ],
     install_requires=[
-        "biopython",
         "click",
         "click-option-group",
         "cloudpickle",
@@ -27,12 +26,12 @@ setup(
         "humanize",
         "jax",
         "jaxlib",
-        "joblib",
         "Jinja2",
         "jmp",
         "omegaconf",
         "optax>=0.0.9",
         "python-dotenv",
+        "pyfaidx",
         "tensorflow",
         "tqdm",
         "wandb"

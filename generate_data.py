@@ -6,7 +6,9 @@ import random
 from math import ceil
 from functools import partial
 from itertools import islice, chain
-from Bio import SeqIO
+from operator import itemgetter
+
+from pyfaidx import Faidx
 
 import numpy as np
 from random import random
@@ -31,7 +33,7 @@ def order_dict_by(d, fn):
     return dict(tuple(map(lambda k: (k, d[k]), keys)))
 
 def get_annotations_from_description(config, description):
-    taxonomy_matches = re.findall(r'Tax=([a-zA-Z]*)', description)
+    taxonomy_matches = re.findall(r'Tax=([a-zA-Z\s]*)\s[a-zA-Z\=]', description)
     annotations = dict()
 
     if len(taxonomy_matches) > 0:
@@ -39,11 +41,13 @@ def get_annotations_from_description(config, description):
 
     return annotations
 
-def fasta_row_to_sequence_strings(config, sample):
-    seq = str(sample.seq)
-    sequences = []
+def fasta_row_to_sequence_strings(config, fa, uid):
+    seq_len = fa.index[uid].rlen
+    seq = str(fa.fetch(uid, 1, seq_len))
+    description = fa.get_long_name(uid)
 
-    annotations = get_annotations_from_description(config, sample.description)
+    sequences = []
+    annotations = get_annotations_from_description(config, description)
     # todo: gather annotations from GO
 
     if len(annotations) > 0:
@@ -62,38 +66,53 @@ def fasta_row_to_sequence_strings(config, sample):
         sequence = sequence.encode('utf-8')
         sequences.append(sequence)
 
-    if random() <= config['prob_seq_only']:
-        sequence = f'# {seq}'
-        sequence = sequence.encode('utf-8')
-        sequences.append(sequence)
+    sequence = f'# {seq}'
+    sequence = sequence.encode('utf-8')
+    sequences.append(sequence)
 
     return sequences
+
+def process_and_write_to_tmp_file(i, seq_str):
+    filename = TMP_DIR / str(i)
+    with gzip.open(str(filename), 'wb') as f:
+        f.write(seq_str)
+
+def foreach(fn, it):
+    for el in it:
+        fn(*el)
 
 # DAG functions
 
 @solid
 def fasta_to_tmp_files(context):
+    log = context.log
     config = context.solid_config
     clear_directory_(TMP_DIR)
 
-    it = SeqIO.parse(config['read_from'], 'fasta')
-    it = filter(lambda t: len(t.seq) + len(t.description) + 10 <= config['max_seq_len'], it)
+    log.info('reading from fasta')
+    fa = Faidx(config['read_from'], sequence_always_upper = True)
+
+    log.info('filtering by length')
+    it = iter(fa.index.items())
+    it = filter(lambda el: el[1].rlen <= config['max_seq_len'], it)
+
+    log.info('parallel processing to tmp files')
     it = islice(it, 0, config['num_samples'])
-    it = map(partial(fasta_row_to_sequence_strings, config), it)
-    it = chain.from_iterable(it)
+    it = map(itemgetter(0), it)
 
-    for index, data in enumerate(it):
-        filename = TMP_DIR / str(index)
-        with gzip.open(str(filename), 'wb') as f:
-            f.write(data)
-
-    return
+    fasta_to_seq_fn = partial(fasta_row_to_sequence_strings, config, fa)
+    it = map(fasta_to_seq_fn, it)
+    it = enumerate(chain.from_iterable(it))
+    foreach(process_and_write_to_tmp_file, it)
 
 @solid
 def files_to_tfrecords(context):
+    log = context.log
     config = context.solid_config
-    num_samples = len([*TMP_DIR.glob('**/*')])
-    num_valids = int(config['fraction_valid_data'] * num_samples)
+
+    filenames = [*TMP_DIR.glob('**/*')]
+    num_samples = len(filenames)
+    num_valids = ceil(config['fraction_valid_data'] * num_samples)
 
     num_sequences_per_file = config['num_sequences_per_file']
 
@@ -122,7 +141,6 @@ def files_to_tfrecords(context):
 
     for (seq_type, seqs) in (('train', train_seqs), ('valid', valid_seqs)):
         num_split = ceil(seqs.shape[0] / num_sequences_per_file)
-
         for file_index, indices in enumerate(np.array_split(seqs, num_split)):
             num_sequences = len(indices)
             tfrecord_filename = f'{file_index}.{num_sequences}.{seq_type}.tfrecord.gz'
@@ -130,7 +148,7 @@ def files_to_tfrecords(context):
 
             with with_tfrecord_writer(tfrecord_path) as write:
                 for index in indices:
-                    filename = str(TMP_DIR / str(index))
+                    filename = filenames[index]
                     with gzip.open(filename, 'rb') as f:
                         write(f.read())
 
