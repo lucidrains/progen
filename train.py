@@ -1,13 +1,9 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-import gzip
-
 import click
 import humanize
 from jinja2 import Template
-from random import randrange
-from shutil import rmtree
 from pathlib import Path
 import tqdm
 import numpy as np
