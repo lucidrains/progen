@@ -58,17 +58,16 @@ def iterator_from_tfrecords_folder(folder, data_type = 'train'):
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(tf.data.AUTOTUNE)
 
-        while True:
-            for batch in dataset:
-                seq = batch['seq']
-                batch_size = seq.shape[0]
-                seq = collate_fn(seq, pad_length = seq_len, offset = 1)
-                bos = np.zeros((batch_size, 1), dtype = np.uint16)
-                seq = np.concatenate((bos, seq), axis = 1)
-                yield seq
+        if loop:
+            dataset = dataset.repeat()
 
-            if not loop:
-                break
+        for batch in dataset:
+            seq = batch['seq']
+            batch_size = seq.shape[0]
+            seq = collate_fn(seq, pad_length = seq_len, offset = 1)
+            bos = np.zeros((batch_size, 1), dtype = np.uint16)
+            seq = np.concatenate((bos, seq), axis = 1)
+            yield seq
 
     return num_seqs, iter_fn
 
