@@ -83,6 +83,8 @@ class LocalAttention(hk.Module):
         mask = np.tril(np.ones((wsz, wsz * 2)), wsz)
         sim = np.where(mask, sim, ATTN_MASK_VALUE)
 
+        sim = sim - np.amax(sim, axis = -1, keepdim = True)
+
         attn = nn.softmax(sim, axis = -1)
         out = np.einsum('h w i j, h w j d -> h w i d', attn, v)
         out = rearrange(out, 'h w n d -> (w n) (h d)')
