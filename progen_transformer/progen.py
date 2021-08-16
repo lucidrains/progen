@@ -3,6 +3,7 @@ from functools import partial
 import jax
 from jax import random
 from jax import nn
+from jax.lax import stop_gradient
 import jax.numpy as np
 import jmp
 
@@ -29,7 +30,7 @@ def fixed_pos_embedding(seq, dim):
 def rotate_every_two(x):
     x = rearrange(x, '... (d r) -> ... d r', r = 2)
     x1, x2 = x[..., 0], x[..., 1]
-    x = np.stack((-x2, x1), axis=-1)
+    x = np.stack((-x2, x1), axis = -1)
     return rearrange(x, "... d r -> ... (d r)")
 
 def apply_rotary_pos_emb(x, sincos):
@@ -38,6 +39,11 @@ def apply_rotary_pos_emb(x, sincos):
     x, x_pass = x[..., :rot_dim], x[..., rot_dim:]
     x = (x * cos) + (rotate_every_two(x) * sin)
     return np.concatenate((x, x_pass), axis = -1)
+
+def shift_tokens(x):
+    x_shift, x_pass = np.array_split(x, 2, axis = -1)
+    x_shift = np.pad(x_shift, ((1, 0), (0, 0)), mode = 'constant')[:-1]
+    return np.concatenate((x_shift, x_pass), axis = -1)
 
 # classes
 
@@ -49,7 +55,8 @@ class LocalAttention(hk.Module):
         dim,
         window_size,
         heads = 8,
-        dim_head = 64
+        dim_head = 64,
+        shift_tokens = True
     ):
         super().__init__(name = name)
         self.heads = heads
@@ -58,11 +65,16 @@ class LocalAttention(hk.Module):
         inner_dim = dim_head * heads
 
         self.norm = LayerNorm()
+        self.shift_tokens = shift_tokens
+
         self.to_qkv = hk.Linear(inner_dim * 3, with_bias = False)
         self.to_out = hk.Linear(dim)
 
     def __call__(self, x, *, pos_emb):
         x = self.norm(x)
+
+        if self.shift_tokens:
+            x = shift_tokens(x)
 
         n, h, wsz = x.shape[0], self.heads, self.window_size
         assert (n % wsz) == 0, 'sequence length must be divisible by the window size'
@@ -83,7 +95,7 @@ class LocalAttention(hk.Module):
         mask = np.tril(np.ones((wsz, wsz * 2)), wsz)
         sim = np.where(mask, sim, ATTN_MASK_VALUE)
 
-        sim = sim - np.amax(sim, axis = -1, keepdims = True)
+        sim = sim - stop_gradient(np.amax(sim, axis = -1, keepdims = True))
         attn = nn.softmax(sim, axis = -1)
 
         out = np.einsum('h w i j, h w j d -> h w i d', attn, v)
@@ -99,7 +111,8 @@ class FeedForward(hk.Module):
         ff_mult = 4,
         glu = False,
         seq_len = None,
-        spatial_gate = False
+        spatial_gate = False,
+        shift_tokens = True
     ):
         super().__init__(name = name)
         assert not (glu and spatial_gate), 'glu and sgu cannot be turned on at the same time'
@@ -107,6 +120,8 @@ class FeedForward(hk.Module):
         hidden_dim *= (1 if not glu else 2)
 
         self.norm = LayerNorm()
+        self.shift_tokens = shift_tokens
+
         self.proj_in = hk.Linear(hidden_dim)
         self.proj_out = hk.Linear(dim)
 
@@ -115,6 +130,10 @@ class FeedForward(hk.Module):
 
     def __call__(self, x):
         x = self.norm(x)
+
+        if self.shift_tokens:
+            x = shift_tokens(x)
+
         x = self.proj_in(x)
 
         if self.glu:
@@ -180,7 +199,8 @@ class ProGenBase(hk.Module):
         ff_mult = 4,
         ff_glu = True,
         attn_dim = None,
-        clamp_gate = True
+        clamp_gate = True,
+        shift_tokens = True
     ):
         super().__init__()
         self.dim_head = dim_head
@@ -192,8 +212,8 @@ class ProGenBase(hk.Module):
             use_ff_glu = not use_gmlp and ff_glu
 
             self.layers.append([
-                LocalAttention(name = f'attn{i}', dim = dim, window_size = window_size, heads = heads, dim_head = dim_head),
-                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult, seq_len = seq_len, spatial_gate = use_gmlp, glu = use_ff_glu)
+                LocalAttention(name = f'attn{i}', dim = dim, window_size = window_size, heads = heads, dim_head = dim_head, shift_tokens = shift_tokens),
+                FeedForward(name = f'ff{i}', dim = dim, ff_mult = ff_mult, seq_len = seq_len, spatial_gate = use_gmlp, glu = use_ff_glu, shift_tokens = shift_tokens)
             ])
 
         self.to_logits = hk.Sequential([
