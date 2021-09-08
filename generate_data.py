@@ -16,7 +16,8 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 from google.cloud import storage
-from dagster import execute_pipeline, pipeline, solid
+
+from prefect import Parameter, task, Flow
 
 from progen_transformer.data import with_tfrecord_writer
 from progen_transformer.utils import clear_directory_
@@ -83,20 +84,18 @@ def foreach(fn, it):
 
 # DAG functions
 
-@solid
-def fasta_to_tmp_files(context):
-    log = context.log
-    config = context.solid_config
+@task
+def fasta_to_tmp_files(config):
     clear_directory_(TMP_DIR)
 
-    log.info('reading from fasta')
+    print('reading from fasta')
     fa = Faidx(config['read_from'], sequence_always_upper = True)
 
-    log.info('filtering by length')
+    print('filtering by length')
     it = iter(fa.index.items())
     it = filter(lambda el: el[1].rlen <= config['max_seq_len'], it)
 
-    log.info('parallel processing to tmp files')
+    print('parallel processing to tmp files')
     it = islice(it, 0, config['num_samples'])
     it = map(itemgetter(0), it)
 
@@ -105,11 +104,8 @@ def fasta_to_tmp_files(context):
     it = enumerate(chain.from_iterable(it))
     foreach(process_and_write_to_tmp_file, it)
 
-@solid
-def files_to_tfrecords(context):
-    log = context.log
-    config = context.solid_config
-
+@task
+def files_to_tfrecords(config):
     filenames = [*TMP_DIR.glob('**/*')]
     num_samples = len(filenames)
     num_valids = ceil(config['fraction_valid_data'] * num_samples)
@@ -156,10 +152,10 @@ def files_to_tfrecords(context):
                 blob = bucket.blob(tfrecord_filename)
                 blob.upload_from_filename(tfrecord_path, timeout = GCS_WRITE_TIMEOUT)
 
-@pipeline
-def main_pipeline():
-    fasta_to_tmp_files()
-    files_to_tfrecords()
+with Flow('parse-fasta') as flow:
+    config = Parameter('config', required = True)
+    fasta_to_tmp_files(config = config)
+    files_to_tfrecords(config = config)
 
 @click.command()
 @click.option('--data_dir', default = './configs/data')
@@ -173,20 +169,7 @@ def main(
     assert config_path.exists(), f'config does not exist at {str(config_path)}'
 
     config = OmegaConf.load(str(config_path))
-
-    execute_pipeline(
-        main_pipeline,
-        run_config = dict(
-            solids = dict(
-                fasta_to_tmp_files = dict(
-                    config = config
-                ),
-                files_to_tfrecords = dict(
-                    config = config
-                )
-            )
-        )
-    )
+    flow.run(config = config)
 
 if __name__ == '__main__':
     main()

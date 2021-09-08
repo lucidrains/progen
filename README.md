@@ -2,11 +2,27 @@
 
 Implementation and replication of <a href="https://arxiv.org/abs/2004.03497">ProGen</a>, Language Modeling for Protein Generation, in Pytorch and Jax (the weights will be made easily transferrable between the two). You can think of this as GPT for proteins sequences.
 
-## Install
+## Requirements
+
+We are going to use <a href="https://github.com/python-poetry/poetry">Poetry</a> for managing the dependencies for this project. So first install it using the <a href="https://github.com/python-poetry/poetry#osx--linux--bashonwindows-install-instructions">one-liner bash command</a>.
+
+Next, git clone the project and install the dependencies
 
 ```bash
-$ pip install progen-transformer
+$ git clone git@github.com:lucidrains/progen
+$ cd progen
+$ poetry install
 ```
+
+For training on GPUs, you may need to rerun pip install with the correct CUDA version. You can follow the instructions <a href="https://github.com/google/jax#pip-installation-gpu-cuda">here</a>
+
+
+```bash
+# ex. CUDA 11.1
+$ pip install --upgrade "jax[cuda111]" -f https://storage.googleapis.com/jax-releases/jax_releases.html
+```
+
+For running any scripts, you'll notice that it will always be prepended with `poetry run`
 
 ## Usage
 
@@ -39,20 +55,20 @@ logits = model.apply(params, next(rng), seq) # (1024, 256)
 Download Uniref50 from <a href="https://www.uniprot.org/downloads">UniProt</a> and place `uniref50.fasta` in the root directory
 
 ```bash
-$ python generate_data.py
+$ poetry run python generate_data.py
 ```
 
 You should see a lot of green if everything succeeds. Then
 
 
 ```bash
-$ python train.py
+$ poetry run python train.py
 ```
 
 By default, the script will checkpoint and resume automatically, but if you wish to clear your progress and restart, just add a `--new` flag
 
 ```bash
-$ python train.py --new
+$ poetry run python train.py --new
 ```
 
 Model checkpoints will be saved periodically to `./ckpts`
@@ -60,13 +76,13 @@ Model checkpoints will be saved periodically to `./ckpts`
 Finally, to sample from your checkpoint, just do
 
 ```bash
-$ python sample.py
+$ poetry run python sample.py
 ```
 
 You can pass a prime with `--prime`. You can either pass the annotations, followed by `#`, to get the generated sequence, or pass the sequence (also followed by `#`) and get the generated annotations
 
 ```bash
-$ python sample.py --prime "[Tax=Mammalia] #"
+$ poetry run python sample.py --prime "[Tax=Mammalia] #"
 ```
 
 ## Mixed Precision
@@ -80,7 +96,7 @@ $ pip install git+https://github.com/deepmind/dm-haiku
 Then make sure to set the `--mixed_precision` flag when invoking the training script
 
 ```bash
-$ python train.py --mixed_precision
+$ poetry run python train.py --mixed_precision
 ```
 
 ## Todo
