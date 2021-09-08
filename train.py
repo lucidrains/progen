@@ -8,7 +8,7 @@ from pathlib import Path
 import tqdm
 import numpy as np
 
-from omegaconf import OmegaConf
+import toml
 
 import jax
 from jax import nn, random, jit, tree_util, tree_map
@@ -93,9 +93,9 @@ def main(
 
     if not exists(last_checkpoint):
         config_folder_path = Path(config_path)
-        config_path = config_folder_path / f'{model_name}.yml'
+        config_path = config_folder_path / f'{model_name}.toml'
         assert config_path.exists(), f'path to your model config {str(config_path)} does not exist'
-        model_kwargs = OmegaConf.load(str(config_path))
+        model_kwargs = toml.loads(config_path.read_text())
     else:
         model_kwargs = last_checkpoint['model_config']
 

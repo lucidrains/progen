@@ -14,7 +14,7 @@ import numpy as np
 from random import random
 from pathlib import Path
 
-from omegaconf import OmegaConf
+import toml
 from google.cloud import storage
 
 from prefect import Parameter, task, Flow
@@ -165,10 +165,10 @@ def main(
     name
 ):
     data_dir = Path(data_dir)
-    config_path = data_dir / f'{name}.yml'
+    config_path = data_dir / f'{name}.toml'
     assert config_path.exists(), f'config does not exist at {str(config_path)}'
 
-    config = OmegaConf.load(str(config_path))
+    config = toml.loads(config_path.read_text())
     flow.run(config = config)
 
 if __name__ == '__main__':
